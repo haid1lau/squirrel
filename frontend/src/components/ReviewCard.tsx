@@ -2,6 +2,7 @@ import { Check, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { api, CATEGORIES, errorMessage, type Benefit } from '../lib/api'
 import { capitalize } from '../lib/format'
+import { flyToBenefits } from '../lib/motion'
 import { useToast } from '../lib/toast'
 import { Button } from './ui/Button'
 import { Message } from './ui/Message'
@@ -22,6 +23,7 @@ export function ReviewCard({ benefit, onConfirmed, onDismissed }: ReviewCardProp
   // Destructive action needs a second click; the first "arms" it for a few seconds.
   const [armed, setArmed] = useState(false)
   const disarmTimer = useRef<number | undefined>(undefined)
+  const cardRef = useRef<HTMLElement>(null)
   useEffect(() => () => window.clearTimeout(disarmTimer.current), [])
 
   const dateId = `expiry-${benefit.id}`
@@ -32,7 +34,10 @@ export function ReviewCard({ benefit, onConfirmed, onDismissed }: ReviewCardProp
     setBusy('confirm')
     setError(null)
     try {
-      onConfirmed(await api.approve(benefit.id, expiryDate))
+      const saved = await api.approve(benefit.id, expiryDate)
+      // Fly a label to the All Benefits link before the card leaves the queue.
+      flyToBenefits(cardRef.current, name)
+      onConfirmed(saved)
       toast('success', `Confirmed “${name}”.`)
     } catch (e) {
       setError(errorMessage(e))
@@ -69,7 +74,11 @@ export function ReviewCard({ benefit, onConfirmed, onDismissed }: ReviewCardProp
   ].filter(Boolean)
 
   return (
-    <article aria-labelledby={`review-${benefit.id}`} className="grid content-start gap-3 rounded-xl border border-line p-4">
+    <article
+      ref={cardRef}
+      aria-labelledby={`review-${benefit.id}`}
+      className="grid content-start gap-3 rounded-xl border border-line p-4"
+    >
       <div>
         <h3 id={`review-${benefit.id}`} className="font-semibold">
           {name}

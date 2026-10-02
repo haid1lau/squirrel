@@ -79,4 +79,5 @@ The real app is this folder (`server.py` + React in `frontend/`), served at http
 - Copy code: done. Codes come from emails (only if found word for word) or the Edit form
 
 **Still to bring over**
-- The scan progress animation, the 3D header acorn and falling acorns, the "All caught up" squirrel
+- Nothing from the design. Animations done 2026-10-02 (see PROGRESS.md section 15).
+- Not done yet, from the planned extras: scan inbox progress with the digging squirrel, Assistant typing indicator

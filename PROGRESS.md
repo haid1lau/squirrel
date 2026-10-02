@@ -305,6 +305,16 @@ Replaced "paste an email" with connected sources:
   December period uses the $35.
 - **Edit and Remove** moved into a ⋯ menu (`ui/MoreMenu.tsx`), drawn on `<body>` so cards can't cover it.
 - Stamp cards from the design were skipped on purpose.
+- **Animations** (from the design; all fall back to fades or nothing with Reduce Motion):
+  - A 3D acorn in the dashboard hero (`acorn/HeroAcorn.tsx`, model in `acorn/model.ts`, ported from three.js r149).
+    It spins as you scroll, bobs, shakes when something expires within 3 days and settles when nothing needs
+    review. three.js loads only on the dashboard, as a separate file.
+  - About 30 falling acorns (`acorn/AcornRain.tsx`, kept at 30 by the owner's choice) only for big wins: a card
+    credit used up, or the review queue cleared. Call `celebrate()` from `lib/motion.ts`.
+  - Stat numbers count up; rows and stat cards slide in one after another; "Mark as used" shows a check and the
+    row folds away; confirming a review item flies its name to the All Benefits link with "+1"; badges expiring
+    within 3 days pulse once; the page links have a sliding highlight; an empty review queue shows the digging
+    "All caught up" squirrel.
 - **Copy code:** benefits have a `code` field. The model copies a voucher or promo code from the email, and
   `validate()` keeps it only if it appears in the email word for word, so a made-up code is dropped. Users can
   type or change it in the Add and Edit form. Cards with a code show it (selectable) and a **Copy code** button.

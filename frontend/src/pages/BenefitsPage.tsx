@@ -335,7 +335,7 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
           </div>
         ) : (
           <ul className="divide-y divide-line">
-            {shown.map((b) =>
+            {shown.map((b, i) =>
               editing === b.id ? (
                 <EditBenefitForm
                   key={b.id}
@@ -348,7 +348,7 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
                   }}
                 />
               ) : (
-                <BenefitRow key={b.id} benefit={b}>
+                <BenefitRow key={b.id} benefit={b} index={i}>
                   <BenefitActions
                     benefit={b}
                     onEdit={() => setEditing(b.id)}

@@ -4,6 +4,7 @@ import { useArmedAction } from '../hooks/useArmedAction'
 import { api, errorMessage, type Benefit, type QuickChange } from '../lib/api'
 import { cn } from '../lib/cn'
 import { formatPoints } from '../lib/format'
+import { celebrate, collapse, prefersReducedMotion } from '../lib/motion'
 import { fieldClass } from '../lib/styles'
 import { useToast } from '../lib/toast'
 import { creditLeft, formatMoney, resetDate, usageKind } from '../lib/usage'
@@ -25,18 +26,29 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [armed, armedClick, disarm] = useArmedAction()
+  const [flash, setFlash] = useState(false)
   const name = benefit.benefit_name || 'Untitled benefit'
   const kind = benefit.needs_review ? null : usageKind(benefit)
   const isCard = benefit.source === 'card'
   const total = benefit.credit_total ?? 0
   const left = creditLeft(benefit)
 
-  /** Saves a quick change; `undo` (the old values) adds an Undo button to the toast. */
-  async function save(change: QuickChange, message: string, undo?: QuickChange) {
+  /**
+   * Saves a quick change; `undo` (the old values) adds an Undo button to the toast.
+   * `leaving` (the row) plays the "done" animation first: a check mark, then the row folds away.
+   */
+  async function save(change: QuickChange, message: string, undo?: QuickChange, leaving?: Element | null) {
     setBusy(true)
     setError(null)
     try {
       const saved = await api.quickUpdate(benefit.id, change)
+      if (leaving) {
+        setFlash(true)
+        if (!prefersReducedMotion()) await new Promise((r) => window.setTimeout(r, 450))
+        await collapse(leaving)
+      }
+      // A card credit just used up is a big win.
+      if (kind === 'credit' && saved.used_on && !benefit.used_on) celebrate()
       onUpdated(saved)
       setPanel(null)
       toast(
@@ -91,12 +103,22 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
         {kind === 'one-time' ? (
           <Button
             variant="primary"
-            icon={<CircleCheck className="size-4" aria-hidden />}
-            loading={busy}
+            icon={flash ? undefined : <CircleCheck className="size-4" aria-hidden />}
+            loading={busy && !flash}
             loadingLabel="Saving…"
-            onClick={() => save({ used: true }, `Marked “${name}” as used.`, { used: false })}
+            onClick={(e) =>
+              save({ used: true }, `Marked “${name}” as used.`, { used: false }, e.currentTarget.closest('li'))
+            }
+            className="relative"
           >
-            Mark as used<span className="sr-only"> {name}</span>
+            <span className={cn('transition-opacity duration-150', flash && 'opacity-0')}>
+              Mark as used<span className="sr-only"> {name}</span>
+            </span>
+            {flash ? (
+              <span aria-hidden className="absolute inset-0 grid place-items-center">
+                <Check className="size-5 animate-pop" strokeWidth={3} />
+              </span>
+            ) : null}
           </Button>
         ) : null}
 

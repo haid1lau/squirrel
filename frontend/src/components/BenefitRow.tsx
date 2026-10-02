@@ -11,7 +11,14 @@ const METER_WINDOW_DAYS = 90
 const meterTone = { danger: 'bg-[#f87171]', warn: 'bg-[#f59e0b]', ok: 'bg-[#4ade80]', neutral: 'bg-line' }
 
 /** One benefit as a list item. `children` (e.g. action buttons) render under the details. */
-export function BenefitRow({ benefit, children }: { benefit: Benefit; children?: ReactNode }) {
+interface BenefitRowProps {
+  benefit: Benefit
+  /** Position in the list, for the staggered entrance (capped, so long lists don't wait). */
+  index?: number
+  children?: ReactNode
+}
+
+export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
   const days = benefit.days_until_expiry
   const { tone } = urgency(days)
   const meta = [
@@ -38,7 +45,9 @@ export function BenefitRow({ benefit, children }: { benefit: Benefit; children?:
   const fill = days == null ? null : Math.max(4, Math.min(100, 100 - (Math.max(days, 0) / METER_WINDOW_DAYS) * 100))
 
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6 sm:py-5">
+    <li
+      style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
+      className="grid animate-rise grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6 sm:py-5">
       <CategoryArt
         category={benefit.category}
         className="row-span-2 size-12 self-start sm:row-span-1 sm:size-14 sm:self-center"

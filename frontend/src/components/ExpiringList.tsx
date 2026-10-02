@@ -69,7 +69,7 @@ export function ExpiringList({ benefits, error, onRetry, onUpdated, onRemoved, l
       ) : (
         <>
           <ul className="divide-y divide-line">
-            {sorted.slice(0, limit).map((b) =>
+            {sorted.slice(0, limit).map((b, i) =>
               editing === b.id ? (
                 <EditBenefitForm
                   key={b.id}
@@ -82,7 +82,7 @@ export function ExpiringList({ benefits, error, onRetry, onUpdated, onRemoved, l
                   }}
                 />
               ) : (
-                <BenefitRow key={b.id} benefit={b}>
+                <BenefitRow key={b.id} benefit={b} index={i}>
                   <BenefitActions
                     benefit={b}
                     onEdit={() => setEditing(b.id)}

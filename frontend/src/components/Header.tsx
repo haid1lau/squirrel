@@ -11,7 +11,7 @@ import {
   Sun,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
 import { PAGES } from '../lib/router'
 import { setTheme, useTheme } from '../lib/theme'
@@ -144,6 +144,31 @@ function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Pro
   )
 }
 
+/** The highlight behind the current page's link; it slides when the page changes. */
+function useNavPill(path: string) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const [pill, setPill] = useState<{ left: number; width: number; animate: boolean } | null>(null)
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const place = (animate: boolean) => {
+      const link = list.querySelector<HTMLElement>('[aria-current="page"]')
+      setPill(link ? { left: link.offsetLeft, width: link.offsetWidth, animate } : null)
+    }
+    place(true)
+    // Link widths change between phone and desktop layouts; follow without sliding.
+    // (The observer also fires once on start, which would cut the slide short.)
+    let first = true
+    const ro = new ResizeObserver(() => {
+      if (first) first = false
+      else place(false)
+    })
+    ro.observe(list)
+    return () => ro.disconnect()
+  }, [path])
+  return { listRef, pill }
+}
+
 interface HeaderProps {
   path: string
   email: string
@@ -151,6 +176,7 @@ interface HeaderProps {
 }
 
 export function Header({ path, email, onSignOut }: HeaderProps) {
+  const { listRef, pill } = useNavPill(path)
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-header backdrop-blur-2xl backdrop-saturate-150">
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-3 py-2.5 min-[360px]:gap-2 min-[360px]:px-4 sm:gap-6 sm:px-6 lg:px-8">
@@ -164,21 +190,31 @@ export function Header({ path, email, onSignOut }: HeaderProps) {
         </Link>
 
         <nav aria-label="Pages" className="min-w-0 flex-1">
-          <ul className="flex gap-0.5 overflow-x-auto min-[360px]:gap-1 [scrollbar-width:none]">
+          <ul ref={listRef} className="relative flex gap-0.5 overflow-x-auto min-[360px]:gap-1 [scrollbar-width:none]">
+            {pill ? (
+              <li
+                role="presentation"
+                aria-hidden
+                className={cn(
+                  'pointer-events-none absolute inset-y-0 rounded-lg bg-primary-soft',
+                  pill.animate && 'transition-[left,width] duration-250 ease-[cubic-bezier(.2,.8,.2,1)]',
+                )}
+                style={{ left: pill.left, width: pill.width }}
+              />
+            ) : null}
             {PAGES.map((p) => {
               const PageIcon = PAGE_ICONS[p.path]
               return (
                 <li key={p.path}>
                   <Link
                     href={p.path}
+                    data-nav={p.path}
                     aria-current={path === p.path ? 'page' : undefined}
                     aria-label={p.label}
                     title={p.label}
                     className={cn(
-                      'flex min-h-11 min-w-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-medium transition-colors duration-150 sm:px-3',
-                      path === p.path
-                        ? 'bg-primary-soft text-primary-text'
-                        : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
+                      'relative flex min-h-11 min-w-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-medium transition-colors duration-150 sm:px-3',
+                      path === p.path ? 'text-primary-text' : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
                     )}
                   >
                     {/* Phones: icons, with the current page's name when there's room. */}
