@@ -20,7 +20,7 @@ Everything from the Claude Design prototype, and every extra planned on top of i
 | 7 | 50 falling acorns; credit cards as an Apple Wallet-style stack on Connections | `ade3347` |
 | 8 | Your changes: reminders per benefit in the ⋯ menu; voucher codes hidden until tapped | `dd8b70b` |
 | 9 | Livelier background: see-through glass, drifting autumn glow, paper grain | `3041310` |
-| 10 | Woodland scene along the bottom; night forest with fireflies in dark mode | see git log |
+| 10 | Woodland scene along the bottom; night forest with fireflies in dark mode; later 40% height, waterfall, mountains, more pines, solid colours | see git log |
 
 ## Decisions
 - **Falling acorns:** 50 (raised from 30 on 2026-10-02). Don't suggest fewer. They play on every Mark as used and Log a use, and when the review queue is cleared, as in the prototype.
@@ -31,7 +31,7 @@ Everything from the Claude Design prototype, and every extra planned on top of i
 - **Stamp cards:** skipped.
 - **Credit cards** on Connections are an Apple Wallet-style stack: top strips show; tapping one brings it to the top with the others piled below, then its perks and Remove. Plain colour gradients by card, no bank logos.
 - **Background:** cards are 72% opaque so the glow shows through; menus, toasts and the account dropdown use the nearly solid `glass-float`. Four colour patches (amber, sky, rust, moss) drift over 60 seconds, with a 5% grain on top. Colours are `--color-glow-*` tokens in `index.css`.
-- **Woodland:** `Woodland.tsx`, fixed along the bottom behind everything, 40% of the screen height (drawn on a 240-tall grid and scaled up 2.5×; cropped at the sides on phones). Four layers of hills and oaks and pines, a squirrel holding an acorn, fallen leaves and acorns, and an animated waterfall on the right pouring off a rocky ledge into a rippling, misty pool (`--water*` tokens; still with Reduce Motion). Pale autumn silhouettes in light mode; night forest with 12 fireflies in dark mode. Colours and opacities are `--wood-*` in `index.css`. With Reduce Motion, the fireflies glow without moving.
+- **Woodland:** `Woodland.tsx`, fixed along the bottom behind everything, 40% of the screen height (1440×640 canvas anchored to the bottom; cropped at the sides on phones). A snow-capped mountain range, pine-covered far hills, rows of pines and oaks, a rocky cliff with an animated waterfall into a rippling, misty pool, a squirrel holding an acorn, fallen leaves and acorns. Each layer is one solid colour (paler with distance), so nearer trees and the squirrel fully hide what's behind them. Night forest with 12 fireflies in dark mode. Colours are `--wood-*` and `--water*` in `index.css`. With Reduce Motion, the water and fireflies stay still.
 - **Reduce Motion:** the acorn stays still, there are no falling acorns, and other animations become fades.
 
 ## Not tested yet (needs real data)

@@ -110,14 +110,17 @@
   }
 }
 
-/* The woodland along the bottom (components/Woodland.tsx): one colour and
-   opacity per layer, so overlapping shapes in a layer don't double up. */
+/* The woodland along the bottom (components/Woodland.tsx): one solid colour
+   per layer, paler with distance, so a nearer tree hides what's behind it. */
 :root {
-  --wood-far: #C2410C;   --wood-far-o: 0.12;
-  --wood-back: #78532D;  --wood-back-o: 0.16;
-  --wood-mid: #4D5F1B;   --wood-mid-o: 0.2;
-  --wood-near: #6B4423;  --wood-near-o: 0.26;
-  --wood-leaf: #C2410C;  --wood-leaf-o: 0.45;
+  --wood-mtn: #CDD5E5;
+  --wood-snow: #F8FAFD;
+  --wood-far: #E6DFD5;
+  --wood-back: #DED3C3;
+  --wood-rock: #C6BCB1;
+  --wood-mid: #D2D7BE;
+  --wood-near: #D6C8BA;
+  --wood-leaf: #E0A082;
   --wood-firefly: none;
   --water: #0EA5E9;      --water-o: 0.3;
   --water-streak: #FFFFFF; --water-streak-o: 0.9;
@@ -151,11 +154,14 @@
     --color-glow-rust: rgb(194 65 12 / 0.26);
     --color-glow-moss: rgb(77 124 15 / 0.22);
     --color-glow-sky: rgb(59 130 246 / 0.26);
-    --wood-far: #2A3D6B;   --wood-far-o: 0.75;
-    --wood-back: #1A2848;  --wood-back-o: 0.85;
-    --wood-mid: #0E182E;   --wood-mid-o: 0.9;
-    --wood-near: #050A16;  --wood-near-o: 0.9;
-    --wood-leaf: #7C2D12;  --wood-leaf-o: 0.6;
+    --wood-mtn: #2B3D6A;
+    --wood-snow: #56688F;
+    --wood-far: #22325A;
+    --wood-back: #182543;
+    --wood-rock: #1E2C4C;
+    --wood-mid: #0E182D;
+    --wood-near: #060B17;
+    --wood-leaf: #4F231F;
     --wood-firefly: block;
     --water: #60A5FA;      --water-o: 0.32;
     --water-streak: #DBEAFE; --water-streak-o: 0.6;
@@ -192,11 +198,14 @@
   --color-glow-rust: rgb(194 65 12 / 0.26);
   --color-glow-moss: rgb(77 124 15 / 0.22);
   --color-glow-sky: rgb(59 130 246 / 0.26);
-  --wood-far: #2A3D6B;   --wood-far-o: 0.75;
-  --wood-back: #1A2848;  --wood-back-o: 0.85;
-  --wood-mid: #0E182E;   --wood-mid-o: 0.9;
-  --wood-near: #050A16;  --wood-near-o: 0.9;
-  --wood-leaf: #7C2D12;  --wood-leaf-o: 0.6;
+  --wood-mtn: #2B3D6A;
+  --wood-snow: #56688F;
+  --wood-far: #22325A;
+  --wood-back: #182543;
+  --wood-rock: #1E2C4C;
+  --wood-mid: #0E182D;
+  --wood-near: #060B17;
+  --wood-leaf: #4F231F;
   --wood-firefly: block;
   --water: #60A5FA;      --water-o: 0.32;
   --water-streak: #DBEAFE; --water-streak-o: 0.6;
@@ -222,11 +231,14 @@
 }
 
 @layer components {
-  .wood-far { fill: var(--wood-far); opacity: var(--wood-far-o); }
-  .wood-back { fill: var(--wood-back); opacity: var(--wood-back-o); }
-  .wood-mid { fill: var(--wood-mid); opacity: var(--wood-mid-o); }
-  .wood-near { fill: var(--wood-near); opacity: var(--wood-near-o); }
-  .wood-leaf { fill: var(--wood-leaf); opacity: var(--wood-leaf-o); }
+  .wood-mtn { fill: var(--wood-mtn); }
+  .wood-snow { fill: var(--wood-snow); }
+  .wood-far { fill: var(--wood-far); }
+  .wood-back { fill: var(--wood-back); }
+  .wood-rock { fill: var(--wood-rock); }
+  .wood-mid { fill: var(--wood-mid); }
+  .wood-near { fill: var(--wood-near); }
+  .wood-leaf { fill: var(--wood-leaf); }
   .wood-water { fill: var(--water); opacity: var(--water-o); }
   .wood-streaks {
     fill: none;
