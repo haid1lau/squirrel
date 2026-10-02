@@ -2,6 +2,10 @@
 // a row of oaks and pines, a near hill with a squirrel holding an acorn, and
 // fallen leaves. Night forest with fireflies in dark mode. Colours and layer
 // opacities are the --wood-* tokens in index.css.
+//
+// The scene is drawn on a 1440×240 grid, then stretched up into a taller canvas
+// (H) so it can fill 40% of the screen: hills are stretched K times taller, and
+// trees, the squirrel and leaves are drawn K times bigger at the same spots.
 
 type Tree = [x: number, base: number, size: number, kind: 'oak' | 'pine']
 
@@ -52,7 +56,15 @@ const FIREFLIES: [number, number, number, number][] = [
   [1290, 150, 5, 3], [540, 180, 7, 5], [1060, 185, 6, 4.5], [250, 175, 8, 6],
 ]
 
-function TreeShape({ tree: [x, base, s, kind] }: { tree: Tree }) {
+const H = 560
+const K = 2
+/** Maps a height on the 1440×240 grid onto the taller canvas, keeping the ground at the bottom. */
+const Y = (y: number) => H - (240 - y) * K
+const HILL = `translate(0 ${H - 240 * K}) scale(1 ${K})`
+
+function TreeShape({ tree: [x, b, size, kind] }: { tree: Tree }) {
+  const base = Y(b)
+  const s = size * K
   if (kind === 'pine') {
     const w = 14 * s
     const tier = (top: number, half: number, bottom: number) =>
@@ -76,39 +88,42 @@ function TreeShape({ tree: [x, base, s, kind] }: { tree: Tree }) {
   )
 }
 
+/** Places a small drawing (made around 0,0 on the 240 grid) at x, y, K times bigger. */
+const at = (x: number, y: number, extra = '') => `translate(${x} ${Y(y)}) scale(${K})${extra}`
+
 export function Woodland() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-1 h-[clamp(160px,22vw,300px)]">
-      <svg className="size-full" viewBox="0 0 1440 240" preserveAspectRatio="xMidYMax slice">
+    <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-1 h-[40vh]">
+      <svg className="size-full" viewBox={`0 0 1440 ${H}`} preserveAspectRatio="xMidYMax slice">
         <g className="wood-fireflies">
           {FIREFLIES.map(([x, y, dur, delay]) => (
-            <circle key={`${x}-${y}`} cx={x} cy={y} r={3.6} style={{ animationDuration: `${dur}s`, animationDelay: `${delay}s` }} />
+            <circle key={`${x}-${y}`} cx={x} cy={Y(y)} r={4} style={{ animationDuration: `${dur}s`, animationDelay: `${delay}s` }} />
           ))}
         </g>
 
         <g className="wood-far">
-          <path d="M0 150 C180 110 320 120 460 140 C600 160 700 105 880 112 C1040 118 1150 150 1280 132 C1360 122 1410 126 1440 130 V240 H0Z" />
+          <path transform={HILL} d="M0 150 C180 110 320 120 460 140 C600 160 700 105 880 112 C1040 118 1150 150 1280 132 C1360 122 1410 126 1440 130 V240 H0Z" />
           {FAR.map((t) => <TreeShape key={t[0]} tree={t} />)}
         </g>
 
         <g className="wood-back">
           {BACK.map((t) => <TreeShape key={t[0]} tree={t} />)}
-          <path d="M0 176 C140 150 260 150 400 165 C540 180 640 150 780 152 C940 155 1040 178 1200 168 C1320 160 1400 158 1440 162 V240 H0Z" />
+          <path transform={HILL} d="M0 176 C140 150 260 150 400 165 C540 180 640 150 780 152 C940 155 1040 178 1200 168 C1320 160 1400 158 1440 162 V240 H0Z" />
         </g>
 
         <g className="wood-mid">
           {MID.map((t) => <TreeShape key={t[0]} tree={t} />)}
-          <path d="M0 200 C160 182 300 186 440 196 C600 208 720 186 880 188 C1040 190 1160 206 1300 198 C1380 194 1420 192 1440 194 V240 H0Z" />
+          <path transform={HILL} d="M0 200 C160 182 300 186 440 196 C600 208 720 186 880 188 C1040 190 1160 206 1300 198 C1380 194 1420 192 1440 194 V240 H0Z" />
         </g>
 
         <g className="wood-near">
           {NEAR.map((t) => <TreeShape key={t[0]} tree={t} />)}
-          <path d="M0 222 C200 212 360 214 520 220 C700 226 860 210 1040 214 C1200 218 1320 226 1440 218 V240 H0Z" />
+          <path transform={HILL} d="M0 222 C200 212 360 214 520 220 C700 226 860 210 1040 214 C1200 218 1320 226 1440 218 V240 H0Z" />
           {TUFTS.map((x) => (
-            <path key={x} d={`M${x} 222 l3 -9 l2 9 l3 -7 l2 7 l3 -11 l2 11Z`} />
+            <path key={x} transform={at(x, 222)} d="M0 0 l3 -9 l2 9 l3 -7 l2 7 l3 -11 l2 11Z" />
           ))}
           {/* A squirrel on the near hill, holding an acorn. */}
-          <g transform="translate(1000 216)">
+          <g transform={at(1000, 216)}>
             <path d="M7 -2 C26 -4 31 -22 23 -34 C17 -44 25 -52 33 -48 C29 -60 10 -58 8 -42 C6 -30 14 -20 3 -9 Z" />
             <ellipse cx="0" cy="-9" rx="9" ry="11" />
             <circle cx="-4" cy="-23" r="7" />
@@ -119,16 +134,16 @@ export function Woodland() {
 
         <g className="wood-leaf">
           {LEAVES.map(([x, y, r]) => (
-            <ellipse key={`${x}-${y}`} cx={x} cy={y} rx={5} ry={2.2} transform={`rotate(${r} ${x} ${y})`} />
+            <ellipse key={`${x}-${y}`} transform={at(x, y, ` rotate(${r})`)} rx={5} ry={2.2} />
           ))}
           {ACORNS.map(([x, y]) => (
-            <g key={x}>
-              <ellipse cx={x} cy={y} rx={3} ry={3.8} />
-              <path d={`M${x - 4} ${y - 2.5} Q${x} ${y - 7} ${x + 4} ${y - 2.5}Z M${x - 0.6} ${y - 6} h1.2 v-2 h-1.2Z`} />
+            <g key={x} transform={at(x, y)}>
+              <ellipse rx={3} ry={3.8} />
+              <path d="M-4 -2.5 Q0 -7 4 -2.5Z M-0.6 -6 h1.2 v-2 h-1.2Z" />
             </g>
           ))}
           {/* The squirrel's acorn. */}
-          <ellipse cx={991} cy={204} rx={2.6} ry={3.2} />
+          <ellipse transform={at(1000, 216)} cx={-9} cy={-12} rx={2.6} ry={3.2} />
         </g>
       </svg>
     </div>

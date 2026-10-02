@@ -31,7 +31,7 @@ Everything from the Claude Design prototype, and every extra planned on top of i
 - **Stamp cards:** skipped.
 - **Credit cards** on Connections are an Apple Wallet-style stack: top strips show; tapping one brings it to the top with the others piled below, then its perks and Remove. Plain colour gradients by card, no bank logos.
 - **Background:** cards are 72% opaque so the glow shows through; menus, toasts and the account dropdown use the nearly solid `glass-float`. Four colour patches (amber, sky, rust, moss) drift over 60 seconds, with a 5% grain on top. Colours are `--color-glow-*` tokens in `index.css`.
-- **Woodland:** `Woodland.tsx`, fixed along the bottom behind everything (160–300px tall, cropped at the sides on phones). Four layers of hills and oaks and pines, a squirrel holding an acorn, fallen leaves and acorns. Pale autumn silhouettes in light mode; night forest with 12 fireflies in dark mode. Colours and opacities are `--wood-*` in `index.css`. With Reduce Motion, the fireflies glow without moving.
+- **Woodland:** `Woodland.tsx`, fixed along the bottom behind everything, 40% of the screen height (drawn on a 240-tall grid and scaled up 2×; cropped at the sides on phones). Four layers of hills and oaks and pines, a squirrel holding an acorn, fallen leaves and acorns. Pale autumn silhouettes in light mode; night forest with 12 fireflies in dark mode. Colours and opacities are `--wood-*` in `index.css`. With Reduce Motion, the fireflies glow without moving.
 - **Reduce Motion:** the acorn stays still, there are no falling acorns, and other animations become fades.
 
 ## Not tested yet (needs real data)
