@@ -1,3 +1,5 @@
+import { DEFAULT_REMINDER_DAYS, REMINDER_DAYS } from './api'
+
 // Hoisted so the formatter isn't rebuilt on every render.
 const dateFormat = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
@@ -17,6 +19,12 @@ const numberFormat = new Intl.NumberFormat()
 export const formatPoints = (points: number, unit = 'points') => `${numberFormat.format(points)} ${unit}`
 
 export const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s)
+
+/** "1 week before" for a benefit's reminder in days (null is the default). Older choices, like 3, read "3 days before". */
+export const reminderLabel = (days: number | null | undefined) => {
+  const d = days ?? DEFAULT_REMINDER_DAYS
+  return REMINDER_DAYS[d] ?? (d === 0 ? 'On the day' : `${d} day${d === 1 ? '' : 's'} before`)
+}
 
 export type Tone = 'danger' | 'warn' | 'ok' | 'neutral'
 

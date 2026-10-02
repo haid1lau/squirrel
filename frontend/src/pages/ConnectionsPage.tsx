@@ -1,7 +1,6 @@
 import { CardsPanel } from '../components/CardsPanel'
 import { EmailAccountsPanel } from '../components/EmailAccountsPanel'
 import { GmailPanel } from '../components/GmailPanel'
-import { RemindersPanel } from '../components/RemindersPanel'
 import type { Session } from '../lib/api'
 
 interface ConnectionsPageProps {
@@ -11,7 +10,7 @@ interface ConnectionsPageProps {
   onSessionChange: () => void
 }
 
-/** Where benefits come from (email accounts, cards) and how Squirrel reminds the user about them. */
+/** Where benefits come from: email accounts and cards. */
 export function ConnectionsPage({ session, onBenefitsChanged, onSessionChange }: ConnectionsPageProps) {
   return (
     <div className="grid gap-6">
@@ -31,7 +30,6 @@ export function ConnectionsPage({ session, onBenefitsChanged, onSessionChange }:
         </div>
         <div className="grid items-start gap-6">
           <CardsPanel onChanged={onBenefitsChanged} />
-          <RemindersPanel />
         </div>
       </div>
     </div>

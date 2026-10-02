@@ -1,6 +1,6 @@
 import { Check, X } from 'lucide-react'
 import { useId, useState, type FormEvent, type ReactNode } from 'react'
-import { api, CATEGORIES, errorMessage, REMINDER_DAYS, TYPES, type Benefit, type BenefitEdit } from '../lib/api'
+import { api, CATEGORIES, errorMessage, TYPES, type Benefit, type BenefitEdit } from '../lib/api'
 import { cn } from '../lib/cn'
 import { capitalize } from '../lib/format'
 import { fieldClass } from '../lib/styles'
@@ -41,7 +41,6 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
     expiry_date: benefit?.expiry_date ?? '',
     terms_summary: benefit?.terms_summary ?? '',
     code: benefit?.code ?? '',
-    reminder: benefit?.reminder == null ? 'default' : String(benefit.reminder),
   })
   // A benefit is worth either a value ("$50") or a points balance; memberships default to points.
   const [worth, setWorth] = useState<'value' | 'points'>(
@@ -71,7 +70,11 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
     setPointsError(null)
     setError(null)
     setSaving(true)
-    const fields = { ...form, value: worth === 'value' ? form.value : '', points: worth === 'points' ? form.points : '' }
+    const fields = {
+      ...form,
+      value: worth === 'value' ? form.value : '',
+      points: worth === 'points' ? form.points : '',
+    }
     try {
       onSaved(await (benefit ? api.updateBenefit(benefit.id, fields) : api.createBenefit(fields)))
     } catch (err) {
@@ -222,22 +225,6 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
               className={cn(fieldClass, 'border-line')}
             />
           </Field>
-          <Field id={`${id}-reminder`} label="Remind me" hint="By email. A choice here overrides your reminder settings.">
-            <select
-              id={`${id}-reminder`}
-              value={form.reminder}
-              onChange={set('reminder')}
-              className={cn(fieldClass, 'border-line')}
-            >
-              <option value="default">Same as my reminder settings</option>
-              {Object.entries(REMINDER_DAYS).map(([days, label]) => (
-                <option key={days} value={days}>
-                  {label}
-                </option>
-              ))}
-              <option value="off">Don’t remind me</option>
-            </select>
-          </Field>
           <Field id={`${id}-code`} label="Code" hint="The voucher or promo code to use at checkout, if it has one.">
             <input
               id={`${id}-code`}
@@ -267,7 +254,13 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
         ) : null}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" icon={<Check className="size-4" aria-hidden />} loading={saving} loadingLabel="Saving…">
+          <Button
+            type="submit"
+            variant="primary"
+            icon={<Check className="size-4" aria-hidden />}
+            loading={saving}
+            loadingLabel="Saving…"
+          >
             {benefit ? 'Save changes' : 'Add benefit'}
           </Button>
           <Button icon={<X className="size-4" aria-hidden />} onClick={onCancel}>

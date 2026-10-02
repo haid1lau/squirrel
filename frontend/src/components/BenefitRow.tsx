@@ -1,8 +1,8 @@
 import { ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { CATEGORIES, REMINDER_DAYS, type Benefit } from '../lib/api'
+import { CATEGORIES, type Benefit } from '../lib/api'
 import { cn } from '../lib/cn'
-import { capitalize, formatDate, formatPoints, urgency } from '../lib/format'
+import { capitalize, formatDate, formatPoints, reminderLabel, urgency } from '../lib/format'
 import { CategoryArt } from './CategoryArt'
 import { UrgencyBadge } from './UrgencyBadge'
 
@@ -35,11 +35,10 @@ export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
     !['other', benefit.type].includes(benefit.category) && CATEGORIES[benefit.category],
     benefit.points != null ? formatPoints(benefit.points, benefit.points_unit) : benefit.value,
     benefit.expiry_date && `Expires ${formatDate(benefit.expiry_date)}`,
-    // Only a benefit's own reminder is shown; the usual one is set on the dashboard.
-    benefit.expiry_date && benefit.reminder === 'off' && 'No reminder',
+    // Set from the ⋯ menu. Not for benefits under review: they aren't reminded until confirmed.
     benefit.expiry_date &&
-      typeof benefit.reminder === 'number' &&
-      `Reminder ${REMINDER_DAYS[benefit.reminder]?.toLowerCase()}`,
+      !benefit.needs_review &&
+      (benefit.reminder === 'off' ? 'No reminder' : `Reminder ${reminderLabel(benefit.reminder).toLowerCase()}`),
   ].filter(Boolean)
   // A fuller bar means closer to expiry, across a 90-day window.
   const fill = days == null ? null : Math.max(4, Math.min(100, 100 - (Math.max(days, 0) / METER_WINDOW_DAYS) * 100))
@@ -47,7 +46,8 @@ export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
   return (
     <li
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
-      className="grid animate-rise grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6 sm:py-5">
+      className="grid animate-rise grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6 sm:py-5"
+    >
       <CategoryArt
         category={benefit.category}
         className="row-span-2 size-12 self-start sm:row-span-1 sm:size-14 sm:self-center"

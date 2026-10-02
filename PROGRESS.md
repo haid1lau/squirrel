@@ -8,7 +8,7 @@ Squirrel tracks memberships, vouchers and card perks so they don't expire unnoti
 
 - **Connect Gmail** (read-only), or **other email over IMAP** (Yahoo, iCloud, AOL, …) with an app password. The app searches for likely benefit emails, and an OpenAI model extracts each benefit; plain code checks the result.
 - **Add credit cards** from a list. Each card's recurring credits are tracked with the date they reset. No card numbers or bank connection.
-- **Get email reminders** before benefits expire, timed per user, per category and per benefit, in the user's own time zone.
+- **Get email reminders** before benefits expire, set per benefit from its ⋯ menu (1 week to 1 year before), in the user's own time zone.
 
 Anything with an uncertain expiry date goes to a review queue instead of being trusted.
 
@@ -39,7 +39,7 @@ Always open the app at `http://127.0.0.1:8000` (not `localhost`), so the sign-in
 - **Live points balances from loyalty programs: not now** (1 October 2026). AwardWallet's API was ruled out (users need AwardWallet accounts, pricing isn't public, it needs a fixed-IP server). **Future option:** Singapore Airlines' developer portal has a KrisFlyer *Get Customer Details* API with the live miles balance, a free sandbox and a KrisFlyer partnership track; Accor's portal has partner loyalty APIs (earn, burn, account linking) but no public balance lookup. Both need a commercial partnership and a hosted app with terms and a privacy policy.
 - **Other email providers: IMAP first (done), Outlook later.** ⏰ **Reminder: add Outlook / Hotmail / Microsoft 365** through Microsoft's own sign-in (Microsoft Graph, read-only mail access). It needs a free app registration in the Azure portal, with its ID and secret in `.env`. IMAP can't cover Outlook: Microsoft switched off app-password sign-in.
 - **Benefit fields** (1–2 October 2026): **Type** is Membership, Subscription, Voucher or Other (Travel, Health and Retail were dropped). **Category** is Entertainment, Transport, Travel, Dining, Wellness, Shopping or Others.
-- **Reminders** (2 October 2026): by email, on for new accounts at 1 week before; users can set it per category and per benefit. Settings live on the Connections page.
+- **Reminders** (2 October 2026, changed the same day): by email, 1 week before by default; each benefit's ⋯ menu → **Reminder** sets 1 week, 2 weeks, 1, 2, 3 or 6 months, 1 year before, or none. No account-wide or per-category settings.
 - **No "import an email" option.** Don't build `.eml` upload or paste-an-email import; benefits come from connected inboxes, cards, or typing a benefit in by hand.
 
 ---
@@ -69,7 +69,7 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 | `db.py` | SQLite storage in `instance/benefitapp.db`, plus encryption (Fernet) for Gmail refresh tokens. |
 | `auth.py` | Accounts (scrypt password hashes), Google-account linking, cookie sessions, wrong-password throttling, password reset links. |
 | `mailer.py` | Sends the app's own emails (reset links, reminders) over SMTP; prints them in the terminal when SMTP isn't set up. |
-| `reminders.py` | Emails users before benefits expire: settings, which reminders are due, the email, and the 15-minute background check. |
+| `reminders.py` | Emails users before benefits expire: each benefit's reminder choice, the user's time zone, which reminders are due, the email, and the 15-minute background check. |
 | `google_api.py` | Google OAuth (PKCE) and the Gmail API calls, using `urllib` only. |
 | `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step. |
 | `gmail_sync.py` | Gmail scan: Gmail search → `scan_jobs`. Up to 50 new emails per scan. |
@@ -93,7 +93,6 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | GET | `/api/session` | Current user, whether Google is set up, Gmail connection |
 | POST | `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` | Email + password |
 | POST | `/api/auth/forgot` (body: `email`), `/api/auth/reset` (body: `token`, `password`) | Password reset by emailed link |
-| GET/POST | `/api/reminders` (POST body: `enabled`, `days_before`, optional `categories`) | The account's reminder settings |
 | POST | `/api/timezone` (body: `timezone`, e.g. `Asia/Singapore`) | Sent by the browser on every load; reminders follow it |
 | GET | `/api/auth/google/start?purpose=login\|connect` | Browser redirect to Google |
 | GET | `/api/auth/google/callback` | Google redirects back here |
@@ -101,7 +100,7 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | POST | `/api/benefits/<id>/approve`, `/dismiss` | Review queue. Dismissed items are kept hidden so scans don't re-add them. `dismiss` is also "Remove", and "Hide until it resets" for card perks. |
 | POST | `/api/benefits` | Add a benefit by hand (`source: manual`). Same fields and checks as `update`, including an optional whole-number `points` balance instead of `value`. |
 | POST | `/api/benefits/<id>/update` | Edit name, provider, category, value, expiry date, terms. Also clears the review flag. |
-| POST | `/api/benefits/<id>/quick` | One-tap changes from a benefit's card, any of: `used` (true/false), `used_amount` (card credits: dollars spent this period, 0 to the credit's amount), `points`, `reminder`. Undo sends the old values back. |
+| POST | `/api/benefits/<id>/quick` | One-tap changes from a benefit's card, any of: `used` (true/false), `used_amount` (card credits: dollars spent this period, 0 to the credit's amount), `points`, `reminder` (`null` for the default 1 week, `"off"`, or 7, 14, 30, 60, 90, 180 or 365 days). Undo sends the old values back. |
 | GET | `/api/gmail/status` | Connection + latest scan progress |
 | POST | `/api/gmail/scan` | Starts a background scan (**calls OpenAI**) |
 | POST | `/api/gmail/disconnect` | Revokes Google access and deletes the stored token |
@@ -298,8 +297,8 @@ Replaced "paste an email" with connected sources:
 - **Using benefits:** each benefit has a main button by kind (`lib/usage.ts`): vouchers and other one-time
   benefits get **Mark as used**, which moves them to a **Used** section on All Benefits (with Restore); card
   credits with a dollar amount get **Log a use** and a "$3 of $15 left" balance, and stay listed as
-  "Used up · resets …" when spent; points balances get **Update balance**; subscriptions get a
-  **Remind me before renewal** switch. Every change shows a toast with **Undo**.
+  "Used up · resets …" when spent; points balances get **Update balance**. Subscriptions had a renewal reminder
+  switch here, replaced by the ⋯ menu's Reminder (section 16). Every change shows a toast with **Undo**.
 - New saved fields `used_on` and `used_amount` (never set by the model). Used benefits get no reminders and are
   left out of the digest and the Assistant. `credit_total` is worked out from a card perk's value; Uber Cash's
   December period uses the $35.
@@ -329,6 +328,26 @@ Replaced "paste an email" with connected sources:
   type or change it in the Add and Edit form. Cards with a code show it (selectable) and a **Copy code** button.
   The demo's Birthday drink, Store credit, Companion fare and Glow Spa vouchers have codes.
 
+### 16. Reminders move to each benefit's ⋯ menu (2 October 2026)
+
+- Replaces section 13's settings. The **Reminders** card on Connections, the "Usually remind me" and per-category
+  choices, the Add/Edit form's "Remind me" field and the subscriptions' "Remind me before renewal" switch are gone.
+- Each benefit with an expiry date has **Reminder** in its ⋯ menu. It opens "Email me": 1 week, 2 weeks, 1 month,
+  2 months, 3 months, 6 months or 1 year before, or Don't remind me. Saving shows a toast with Undo. Every row with
+  an expiry date shows its reminder ("Reminder 1 week before", "No reminder"); benefits waiting for review don't.
+- Benefits nobody has set a reminder for get one 1 week before (`DEFAULT_DAYS`). Editing a benefit keeps its reminder.
+- `/api/reminders` is removed. `reminder_settings` now holds the time zone and an on/off switch with no screen,
+  which keeps the demo account quiet (`reminders.set_enabled`). Its `days_before` and `categories` columns are
+  unused leftovers. The email now says to use the benefit's ⋯ menu instead of linking to Connections.
+- **Tested:** setting 1 year, off and back to default through the API; a 3-day value is refused; Edit keeps the
+  reminder; which benefits are due for the default, 30-day, 1-year and off choices; the picker and menu in the browser.
+
+### 17. Hidden voucher codes (2 October 2026)
+
+- A benefit's code shows as drifting dots, like Telegram's spoilers (`spoiler` utility in `index.css`), until it's
+  tapped; then it shows as selectable text until the page is left. **Copy code** works without revealing it, and a
+  failed copy reveals it so it can be selected by hand. Screen readers hear "Show the code for …" until revealed.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
@@ -338,7 +357,7 @@ Replaced "paste an email" with connected sources:
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
 - **No real browser click-through yet.** Checks so far are screenshots plus API tests with `curl`.
 - **No automated tests are saved in the repo.** The offline checks run during development were throwaway scripts.
-- **Reminders are email only**, sent by a thread inside `server.py`: none go out while the server is stopped (a missed one is sent at the next check if the benefit hasn't expired). No push or in-app notifications. The email has no one-click unsubscribe, only a link to the settings. The background thread's own send hasn't been watched end to end yet; the sample was sent by calling the same code directly.
+- **Reminders are email only**, sent by a thread inside `server.py`: none go out while the server is stopped (a missed one is sent at the next check if the benefit hasn't expired). No push or in-app notifications. The email has no one-click unsubscribe; it says to change or stop a reminder from the benefit's ⋯ menu. The background thread's own send hasn't been watched end to end yet; the sample was sent by calling the same code directly.
 - **Time zone comes from the last device used.** Someone travelling gets reminders on that device's clock; there's no manual time-zone picker.
 - **Sending through a personal Gmail account** is limited (about 500 emails a day) and may be flagged as bulk mail. Fine for testers; use a sending service (e.g. Amazon SES, Postmark, Resend) with a custom domain before launch.
 - **Categories of benefits saved before 1 October were guessed** from their names (`_add_benefit_types` in `db.py`). Wrong guesses need fixing by hand with Edit.

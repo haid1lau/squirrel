@@ -21,7 +21,7 @@ export interface Benefit {
   points?: number | null
   /** Loyalty memberships: "points", "miles" or "Avios". */
   points_unit?: string
-  /** When to email about it: null uses the account default, "off" never, a number is days before expiry. */
+  /** When to email about it: null is 1 week before, "off" never, a number is days before expiry. */
   reminder?: number | 'off' | null
   expiry_date: string | null
   expiry_confidence: ExpiryConfidence
@@ -78,36 +78,21 @@ export interface BenefitEdit {
   expiry_date: string
   terms_summary: string
   code: string
-  /** "default", "off" or days before expiry, as text. */
-  reminder: string
 }
 
 /** Days before expiry a reminder can be sent (DAY_CHOICES in reminders.py). */
 export const REMINDER_DAYS: Record<number, string> = {
-  0: 'On the day',
-  1: '1 day before',
-  2: '2 days before',
-  3: '3 days before',
   7: '1 week before',
   14: '2 weeks before',
   30: '1 month before',
   60: '2 months before',
   90: '3 months before',
   180: '6 months before',
+  365: '1 year before',
 }
 
-export interface ReminderSettings {
-  enabled: boolean
-  days_before: number
-  /** A different reminder for some categories, e.g. { travel: 180, dining: 'off' }. */
-  categories: Record<string, number | 'off'>
-  /** The time zone reminders follow (reported by the browser), or null before it has been. */
-  timezone: string | null
-  /** Where reminders go: the account's email. */
-  email: string
-  /** False when the server has no SMTP settings, so emails are only printed in its terminal. */
-  email_enabled: boolean
-}
+/** A benefit's reminder when it hasn't chosen one (DEFAULT_DAYS in reminders.py). */
+export const DEFAULT_REMINDER_DAYS = 7
 
 export interface AskEntry {
   id: string
@@ -231,8 +216,7 @@ export const api = {
     request<{ user: User }>('/api/auth/register', post({ email, password, name })),
   login: (email: string, password: string) => request<{ user: User }>('/api/auth/login', post({ email, password })),
   logout: () => request<{ ok: true }>('/api/auth/logout', post({})),
-  forgotPassword: (email: string) =>
-    request<{ ok: true; email_enabled: boolean }>('/api/auth/forgot', post({ email })),
+  forgotPassword: (email: string) => request<{ ok: true; email_enabled: boolean }>('/api/auth/forgot', post({ email })),
   resetPassword: (token: string, password: string) =>
     request<{ user: User }>('/api/auth/reset', post({ token, password })),
 
@@ -258,9 +242,6 @@ export const api = {
   scanImap: (id: string) => request<ScanStatus>(`/api/imap/${id}/scan`, post({})),
   removeImap: (id: string) => request<{ ok: true }>(`/api/imap/${id}/remove`, post({})),
 
-  reminders: () => request<ReminderSettings>('/api/reminders'),
-  saveReminders: (s: Pick<ReminderSettings, 'enabled' | 'days_before' | 'categories'>) =>
-    request<ReminderSettings>('/api/reminders', post(s)),
   setTimezone: (timezone: string) => request<{ ok: true }>('/api/timezone', post({ timezone })),
 
   cards: () => request<CardsResponse>('/api/cards'),
@@ -272,5 +253,4 @@ export const api = {
 /** Full-page navigations (not fetch): Google needs to show its own pages. */
 export const googleUrl = (purpose: 'login' | 'connect') => `/api/auth/google/start?purpose=${purpose}`
 
-export const errorMessage = (e: unknown) =>
-  e instanceof Error ? e.message : 'Something went wrong.'
+export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.')

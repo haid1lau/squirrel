@@ -111,7 +111,8 @@ CREATE TABLE IF NOT EXISTS benefits (
     UNIQUE (user_id, source_ref)
 );
 
--- Email reminders (reminders.py). No row means on, 7 days before.
+-- Email reminders (reminders.py). No row means on. days_before and categories
+-- are left from account-wide reminder settings, replaced by each benefit's own.
 CREATE TABLE IF NOT EXISTS reminder_settings (
     user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     enabled     INTEGER NOT NULL,

@@ -1,9 +1,9 @@
-import { Check, CircleCheck, Coins, Copy, EyeOff, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react'
+import { Bell, Check, CircleCheck, Coins, Copy, EyeOff, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useArmedAction } from '../hooks/useArmedAction'
-import { api, errorMessage, type Benefit, type QuickChange } from '../lib/api'
+import { api, DEFAULT_REMINDER_DAYS, errorMessage, REMINDER_DAYS, type Benefit, type QuickChange } from '../lib/api'
 import { cn } from '../lib/cn'
-import { formatPoints } from '../lib/format'
+import { formatPoints, reminderLabel } from '../lib/format'
 import { celebrate, collapse, prefersReducedMotion } from '../lib/motion'
 import { fieldClass } from '../lib/styles'
 import { useToast } from '../lib/toast'
@@ -19,10 +19,10 @@ interface BenefitActionsProps {
   onRemoved: (id: string) => void
 }
 
-/** A benefit's main button (by kind, see lib/usage.ts), its balance, and the ⋯ menu with Edit and Remove. */
+/** A benefit's main button (by kind, see lib/usage.ts), its balance, and the ⋯ menu with Edit, Reminder and Remove. */
 export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: BenefitActionsProps) {
   const toast = useToast()
-  const [panel, setPanel] = useState<'log' | 'points' | null>(null)
+  const [panel, setPanel] = useState<'log' | 'points' | 'reminder' | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [armed, armedClick, disarm] = useArmedAction()
@@ -58,7 +58,9 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
         undo && {
           label: 'Undo',
           onClick: () =>
-            api.quickUpdate(benefit.id, undo).then(onUpdated, (e) => toast('error', `Couldn’t undo: ${errorMessage(e)}`)),
+            api
+              .quickUpdate(benefit.id, undo)
+              .then(onUpdated, (e) => toast('error', `Couldn’t undo: ${errorMessage(e)}`)),
         },
       )
     } catch (e) {
@@ -81,11 +83,14 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
   }
 
   const menu: MoreMenuItem[] = [{ label: 'Edit', icon: Pencil, onSelect: onEdit }]
+  // Reminders count down to the expiry date, so only benefits with one get them.
+  if (benefit.expiry_date) menu.push({ label: 'Reminder', icon: Bell, onSelect: () => setPanel('reminder') })
   if (kind === 'credit' && benefit.used_amount) {
     menu.push({
       label: 'Mark as unused',
       icon: RotateCcw,
-      onSelect: () => save({ used: false }, `Reset “${name}” to ${formatMoney(total)}.`, { used_amount: benefit.used_amount ?? 0 }),
+      onSelect: () =>
+        save({ used: false }, `Reset “${name}” to ${formatMoney(total)}.`, { used_amount: benefit.used_amount ?? 0 }),
     })
   }
   menu.push({
@@ -138,7 +143,9 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
 
         {kind === 'credit' ? (
           <span className="inline-flex items-center gap-2 rounded-full bg-surface-2 px-2.5 py-1 text-xs font-semibold tabular-nums text-ink-muted">
-            {left > 0 ? `${formatMoney(left)} of ${formatMoney(total)} left` : `Used up · resets ${resetDate(benefit) ?? 'next period'}`}
+            {left > 0
+              ? `${formatMoney(left)} of ${formatMoney(total)} left`
+              : `Used up · resets ${resetDate(benefit) ?? 'next period'}`}
             {left > 0 ? (
               <span aria-hidden className="h-1 w-11 overflow-hidden rounded-full bg-line">
                 <span className="block h-full bg-cta" style={{ width: `${(left / total) * 100}%` }} />
@@ -156,19 +163,6 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
           >
             Update balance<span className="sr-only"> for {name}</span>
           </Button>
-        ) : null}
-
-        {kind === 'subscription' && benefit.expiry_date ? (
-          <ReminderSwitch
-            on={benefit.reminder !== 'off'}
-            disabled={busy}
-            onToggle={(on) =>
-              save(
-                { reminder: on ? null : 'off' },
-                on ? `You’ll get an email before “${name}” renews.` : `No renewal email for “${name}”.`,
-              )
-            }
-          />
         ) : null}
 
         <div className="ml-auto">
@@ -211,6 +205,23 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
         />
       ) : null}
 
+      {panel === 'reminder' ? (
+        <ReminderForm
+          benefit={benefit}
+          busy={busy}
+          onCancel={() => setPanel(null)}
+          onSave={(reminder) =>
+            save(
+              { reminder },
+              reminder === 'off'
+                ? `No reminder for “${name}”.`
+                : `You’ll get an email ${reminderLabel(reminder).toLowerCase()} “${name}” expires.`,
+              { reminder: benefit.reminder ?? null },
+            )
+          }
+        />
+      ) : null}
+
       {error ? <Message tone="error">{error}</Message> : null}
     </div>
   )
@@ -218,10 +229,14 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
 
 const COPIED_MS = 1200
 
-/** The code as text (selectable, for reading out at a till) and a button that copies it. */
+/**
+ * The code, hidden under drifting dots (like Telegram's spoilers) until tapped, so it isn't read over a
+ * shoulder; then as selectable text, for reading out at a till. Copy works either way.
+ */
 function CopyCode({ code, name }: { code: string; name: string }) {
   const toast = useToast()
   const [copied, setCopied] = useState(false)
+  const [shown, setShown] = useState(false)
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -229,6 +244,7 @@ function CopyCode({ code, name }: { code: string; name: string }) {
     try {
       await navigator.clipboard.writeText(code)
     } catch {
+      setShown(true)
       toast('error', 'Couldn’t copy. Select the code and copy it yourself.')
       return
     }
@@ -240,9 +256,24 @@ function CopyCode({ code, name }: { code: string; name: string }) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      <code className="rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono text-sm font-semibold tracking-wide select-all">
-        {code}
-      </code>
+      {shown ? (
+        <code className="animate-rise rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono text-sm font-semibold tracking-wide select-all">
+          {code}
+        </code>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShown(true)}
+          title="Show code"
+          className="cursor-pointer rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono text-sm font-semibold tracking-wide transition-colors duration-150 hover:bg-line"
+        >
+          {/* The code keeps the chip its real width, drawn invisible under the dots. */}
+          <span aria-hidden className="spoiler select-none">
+            {code}
+          </span>
+          <span className="sr-only">Show the code for {name}</span>
+        </button>
+      )}
       <Button
         icon={
           copied ? (
@@ -261,29 +292,60 @@ function CopyCode({ code, name }: { code: string; name: string }) {
   )
 }
 
-function ReminderSwitch({ on, disabled, onToggle }: { on: boolean; disabled: boolean; onToggle: (on: boolean) => void }) {
+interface ReminderFormProps {
+  benefit: Benefit
+  busy: boolean
+  onCancel: () => void
+  onSave: (reminder: number | 'off') => void
+}
+
+/** When to email about a benefit, from 1 week to 1 year before it expires, or not at all. */
+function ReminderForm({ benefit, busy, onCancel, onSave }: ReminderFormProps) {
+  const id = useId()
+  const [value, setValue] = useState(String(benefit.reminder ?? DEFAULT_REMINDER_DAYS))
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    onSave(value === 'off' ? 'off' : Number(value))
+  }
+
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      disabled={disabled}
-      onClick={() => onToggle(!on)}
-      className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-semibold disabled:cursor-wait"
-    >
-      <span
-        aria-hidden
-        className={cn('relative h-6 w-10 shrink-0 rounded-full transition-colors duration-200', on ? 'bg-cta' : 'bg-line')}
-      >
-        <span
-          className={cn(
-            'absolute top-[3px] size-[18px] rounded-full bg-white shadow transition-[left] duration-200',
-            on ? 'left-[19px]' : 'left-[3px]',
-          )}
-        />
-      </span>
-      Remind me before renewal
-    </button>
+    <form onSubmit={submit} className="grid gap-2 rounded-xl bg-surface-2 p-3 sm:max-w-md">
+      <label htmlFor={id} className="text-sm font-semibold">
+        Email me
+      </label>
+      <div className="flex flex-wrap gap-2">
+        {/* Wrapped, as fieldClass is full width. */}
+        <div className="w-48 flex-none">
+          <select
+            id={id}
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-describedby={`${id}-hint`}
+            className={cn(fieldClass, 'border-line')}
+          >
+            {/* An older choice that's no longer offered (like 3 days) stays selectable until changed. */}
+            {typeof benefit.reminder === 'number' && !(benefit.reminder in REMINDER_DAYS) ? (
+              <option value={benefit.reminder}>{reminderLabel(benefit.reminder)}</option>
+            ) : null}
+            {Object.entries(REMINDER_DAYS).map(([days, label]) => (
+              <option key={days} value={days}>
+                {label}
+              </option>
+            ))}
+            <option value="off">Don’t remind me</option>
+          </select>
+        </div>
+        <Button type="submit" variant="primary" loading={busy} loadingLabel="Saving…">
+          Save
+        </Button>
+        <Button onClick={onCancel}>Cancel</Button>
+      </div>
+      <p id={`${id}-hint`} className="text-xs text-ink-muted">
+        Sent to your account’s email, after 8am your time.
+      </p>
+    </form>
   )
 }
 

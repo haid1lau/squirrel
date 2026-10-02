@@ -5,25 +5,22 @@ Emails users before their benefits expire. server.py starts a background
 thread that calls run_due() every 15 minutes; each user gets at most one email
 per check, listing every benefit whose reminder day has come.
 
-- Each user has settings in reminder_settings: on or off, the usual number of
-  days before expiry, and optionally a different number (or "off") for each
-  category, like 1 month for dining and 6 months for travel. With no row yet,
-  reminders are on, DEFAULT_DAYS before.
-- A benefit can override both: data["reminder"] is None (use the settings),
-  "off", or a number of days before expiry. Turning reminders off for the
-  account stops them all.
+- Each benefit has its own reminder, set from its ⋯ menu: data["reminder"] is
+  None (DEFAULT_DAYS before), "off", or a number of days before expiry
+  (DAY_CHOICES, 1 week to 1 year).
+- reminder_settings keeps each user's time zone, and an on/off switch with no
+  screen of its own: it keeps the demo account (an example.com address) quiet.
 - Each benefit is reminded once per expiry date (reminders_sent), so a
   changed date gets a new reminder. Card credits are a new benefit each
   period, so they're reminded every period.
 - Benefits waiting for review are skipped: their date isn't confirmed.
 - Days and SEND_FROM_HOUR follow each user's own time zone (sent by their
   browser; the server's until it is), so nothing arrives before 8am where they
-  are. A reminder
-  whose day has already passed when it's set up (a benefit added 2 days before
-  it expires, with a 1-week reminder) goes out at the next check.
+  are. A reminder whose day has already passed when it's set up (a benefit
+  added 2 days before it expires, with a 1-week reminder) goes out at the next
+  check.
 """
 
-import json
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -36,7 +33,7 @@ import db
 import mailer
 
 DEFAULT_DAYS = 7
-DAY_CHOICES = (0, 1, 2, 3, 7, 14, 30, 60, 90, 180)
+DAY_CHOICES = (7, 14, 30, 60, 90, 180, 365)
 SEND_FROM_HOUR = 8
 CHECK_EVERY_SECONDS = 15 * 60
 
@@ -48,25 +45,19 @@ Reminder = Union[int, str, None]
 # ---------------------------------------------------------------------------
 
 def get_settings(conn, user_id: str) -> dict:
-    row = conn.execute("SELECT enabled, days_before, categories, timezone FROM reminder_settings WHERE user_id = ?",
-                       (user_id,)).fetchone()
+    row = conn.execute("SELECT enabled, timezone FROM reminder_settings WHERE user_id = ?", (user_id,)).fetchone()
     if row is None:
-        return {"enabled": True, "days_before": DEFAULT_DAYS, "categories": {}, "timezone": None}
-    return {"enabled": bool(row["enabled"]), "days_before": row["days_before"],
-            "categories": json.loads(row["categories"]), "timezone": row["timezone"]}
+        return {"enabled": True, "timezone": None}
+    return {"enabled": bool(row["enabled"]), "timezone": row["timezone"]}
 
 
-def save_settings(conn, user_id: str, enabled: bool, days_before: int, categories: Optional[dict] = None) -> dict:
-    """Saves the reminder choices. categories=None keeps the current ones; the time zone is kept."""
-    if categories is None:
-        categories = get_settings(conn, user_id)["categories"]
+def set_enabled(conn, user_id: str, enabled: bool) -> None:
+    """Turns all of a user's reminder emails on or off; the time zone is kept."""
     conn.execute(
-        "INSERT INTO reminder_settings (user_id, enabled, days_before, categories) VALUES (?, ?, ?, ?) "
-        "ON CONFLICT (user_id) DO UPDATE SET enabled = excluded.enabled, days_before = excluded.days_before, "
-        "categories = excluded.categories",
-        (user_id, int(enabled), days_before, json.dumps(categories)),
+        "INSERT INTO reminder_settings (user_id, enabled, days_before) VALUES (?, ?, ?) "
+        "ON CONFLICT (user_id) DO UPDATE SET enabled = excluded.enabled",
+        (user_id, int(enabled), DEFAULT_DAYS),
     )
-    return get_settings(conn, user_id)
 
 
 def save_timezone(conn, user_id: str, name: str) -> None:
@@ -97,8 +88,12 @@ def local_now(settings: dict, now_utc: datetime) -> datetime:
     return now_utc.astimezone()
 
 
-def parse_days(value) -> int:
-    """A days-before choice from a request. Raises ValueError if it isn't one of DAY_CHOICES."""
+def parse_reminder(value) -> Reminder:
+    """A benefit's reminder from a request: None (the default), "off" or days before expiry."""
+    if value in (None, "", "default"):
+        return None
+    if value == "off":
+        return "off"
     try:
         days = int(value)
     except (TypeError, ValueError):
@@ -106,29 +101,6 @@ def parse_days(value) -> int:
     if days not in DAY_CHOICES:
         raise ValueError("Pick when to be reminded from the list.")
     return days
-
-
-def parse_categories(value, known: list[str]) -> dict:
-    """Per-category choices from a request: {category: days before, or "off"}. Leave a category out to use the usual."""
-    if not isinstance(value, dict):
-        raise ValueError("categories must be an object.")
-    out = {}
-    for category, choice in value.items():
-        if category not in known:
-            raise ValueError("Pick a category from the list.")
-        reminder = parse_reminder(choice)
-        if reminder is not None:
-            out[category] = reminder
-    return out
-
-
-def parse_reminder(value) -> Reminder:
-    """A benefit's own reminder from a request: None (the default), "off" or days before."""
-    if value in (None, "", "default"):
-        return None
-    if value == "off":
-        return "off"
-    return parse_days(value)
 
 
 # ---------------------------------------------------------------------------
@@ -139,12 +111,10 @@ def lead_days(benefit: dict, settings: dict) -> Optional[int]:
     """Days before expiry to remind about this benefit, or None for no reminder."""
     if not settings["enabled"]:
         return None
-    choice = benefit.get("reminder")  # the benefit's own choice wins
-    if choice is None:
-        choice = settings["categories"].get(benefit.get("category"))
+    choice = benefit.get("reminder")
     if choice == "off":
         return None
-    return choice if isinstance(choice, int) else settings["days_before"]
+    return choice if isinstance(choice, int) else DEFAULT_DAYS
 
 
 def due(benefits: list[dict], settings: dict, sent: set[tuple[str, str]], today: date) -> list[dict]:
@@ -202,8 +172,8 @@ def compose(name: Optional[str], benefits: list[dict], today: date) -> tuple[str
         if b.get("terms_summary"):
             lines.append(f"  {b['terms_summary']}")
     lines += ["", f"See everything in Squirrel: {config.APP_URL}/benefits", "",
-              "You're getting this because email reminders are on. To change when you're reminded, "
-              f"or turn reminders off, go to Connections in Squirrel: {config.APP_URL}/connections#reminders"]
+              "To change when you're reminded about a benefit, or stop its reminders, "
+              "choose Reminder in its ⋯ menu in Squirrel."]
     return subject, "\n".join(lines)
 
 

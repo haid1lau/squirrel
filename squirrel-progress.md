@@ -17,13 +17,15 @@ Everything from the Claude Design prototype, and every extra planned on top of i
 | 4 | Animations: 3D header acorn, falling acorns, count-up, row collapse, fly to Benefits, badge pulse, sliding nav highlight, "All caught up" squirrel | `e2c4d7f` |
 | 5 | Scan inbox progress; falling acorns on every use | `423d25a` |
 | 6 | Assistant typing indicator and line-by-line answers | `d7b300b` |
-| 7 | 50 falling acorns; credit cards as an Apple Wallet-style stack on Connections | see git log |
+| 7 | 50 falling acorns; credit cards as an Apple Wallet-style stack on Connections | `ade3347` |
+| 8 | Your changes: reminders per benefit in the ⋯ menu; voucher codes hidden until tapped | see git log |
 
 ## Decisions
 - **Falling acorns:** 50 (raised from 30 on 2026-10-02). Don't suggest fewer. They play on every Mark as used and Log a use, and when the review queue is cleared, as in the prototype.
-- **Main action by kind:** vouchers and other one-time benefits get Mark as used, and Copy code if they have one. Card credits get Log a use with a "$3 of $15 left" balance. Points get Update balance. Subscriptions get a renewal reminder switch. Memberships have no main button.
+- **Main action by kind:** vouchers and other one-time benefits get Mark as used, and Copy code if they have one. Card credits get Log a use with a "$3 of $15 left" balance. Points get Update balance. Subscriptions and memberships have no main button.
 - **Card credits** stay in the list when used up ("Used up · resets 1 Nov"). One-time benefits move to the Used section, which has Restore.
-- **Codes** are saved from an email only if they appear in it word for word, so the AI can't invent one. They can also be typed in the Edit form.
+- **Codes** are saved from an email only if they appear in it word for word, so the AI can't invent one. They can also be typed in the Edit form. On the card a code is hidden under drifting dots (like Telegram spoilers) until tapped; Copy code works without revealing it.
+- **Reminders** are set per benefit from its ⋯ menu → Reminder: 1 week (the default), 2 weeks, 1, 2, 3 or 6 months, 1 year before, or none. There are no account-wide or per-category reminder settings, and the Reminders card on Connections is gone.
 - **Stamp cards:** skipped.
 - **Credit cards** on Connections are an Apple Wallet-style stack: top strips show; tapping one brings it to the top with the others piled below, then its perks and Remove. Plain colour gradients by card, no bank logos.
 - **Reduce Motion:** the acorn stays still, there are no falling acorns, and other animations become fades.

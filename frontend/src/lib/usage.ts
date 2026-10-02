@@ -4,8 +4,7 @@ import type { Benefit } from './api'
  * What a benefit's main button does, by kind:
  * - credit: a card credit with a dollar amount. "Log a use" spends part of it.
  * - points: a points or miles balance. "Update balance".
- * - subscription: a renewal reminder switch.
- * - membership: always on, so no main button.
+ * - subscription and membership: ongoing, so no main button.
  * - one-time: vouchers and the rest. "Mark as used" moves it to the Used list.
  */
 export type UsageKind = 'credit' | 'points' | 'subscription' | 'membership' | 'one-time'

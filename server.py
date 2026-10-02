@@ -252,10 +252,6 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/imap":
             if user := self._require_user():
                 self._send_json(HTTPStatus.OK, imap_sync.list_accounts(user["id"]))
-        elif path == "/api/reminders":
-            if user := self._require_user():
-                with db.connect() as conn:
-                    self._send_json(HTTPStatus.OK, self._reminder_info(conn, user))
         elif path == "/api/cards":
             if user := self._require_user():
                 with db.connect() as conn:
@@ -324,8 +320,6 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, {"ok": True})
             else:
                 self._error(HTTPStatus.NOT_FOUND, "That email account is no longer connected.")
-        elif path == "/api/reminders":
-            self._save_reminders(user, data)
         elif path == "/api/timezone":
             try:
                 with db.connect() as conn:
@@ -528,7 +522,7 @@ class Handler(BaseHTTPRequestHandler):
     def _read_benefit_fields(self, data: dict) -> Optional[dict]:
         """
         Validates the user-editable fields (name, provider, type, category, value or
-        points, expiry date, terms, reminder). Returns them, or sends a 400 and returns None.
+        points, expiry date, terms). Returns them, or sends a 400 and returns None.
         """
         def text(key: str, limit: int, required: bool = False) -> Optional[str]:
             value = data.get(key)
@@ -551,7 +545,6 @@ class Handler(BaseHTTPRequestHandler):
                 "expiry_date": text("expiry_date", 10),
                 "terms_summary": text("terms_summary", 500),
                 "code": text("code", 64),
-                "reminder": reminders.parse_reminder(data.get("reminder")),
             }
             if fields_["type"] not in TYPES:
                 raise ValueError("Pick a type from the list.")
@@ -651,30 +644,6 @@ class Handler(BaseHTTPRequestHandler):
             stored = {k: v for k, v in record.items() if k not in ("id", "source")}
             db.update_benefit_data(conn, user["id"], benefit_id, stored)
         self._send_json(HTTPStatus.OK, with_days(record))
-
-    # --- reminders --------------------------------------------------------------
-
-    @staticmethod
-    def _reminder_info(conn, user: dict) -> dict:
-        return {**reminders.get_settings(conn, user["id"]), "email": user["email"],
-                "email_enabled": config.EMAIL_ENABLED}
-
-    def _save_reminders(self, user: dict, data: dict) -> None:
-        enabled = data.get("enabled")
-        if not isinstance(enabled, bool):
-            self._error(HTTPStatus.BAD_REQUEST, "enabled must be true or false.")
-            return
-        try:
-            days = reminders.parse_days(data.get("days_before"))
-            categories = data.get("categories")  # left out: keep the current ones
-            if categories is not None:
-                categories = reminders.parse_categories(categories, CATEGORIES)
-        except ValueError as e:
-            self._error(HTTPStatus.BAD_REQUEST, str(e))
-            return
-        with db.connect() as conn:
-            reminders.save_settings(conn, user["id"], enabled, days, categories)
-            self._send_json(HTTPStatus.OK, self._reminder_info(conn, user))
 
     def _imap_action(self, fn) -> None:
         try:

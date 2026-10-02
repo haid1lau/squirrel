@@ -161,8 +161,8 @@ def main() -> None:
                            loyalty.build_record(loyalty.PROGRAMS[key], latest, activity))
         for question, answer in ASK_SAMPLES:
             db.add_ask_history(conn, uid, question, answer)
-        # example.com isn't a real inbox: keep reminder emails off (the settings still show).
-        reminders.save_settings(conn, uid, False, reminders.DEFAULT_DAYS)
+        # example.com isn't a real inbox: keep reminder emails off.
+        reminders.set_enabled(conn, uid, False)
     cards.add_user_card(uid, "amex_platinum", (date.today().month + 4) % 12 + 1)
 
     print(f"Demo account {'reset' if existed else 'created'}.")
