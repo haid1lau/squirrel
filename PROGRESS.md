@@ -314,6 +314,9 @@ Replaced "paste an email" with connected sources:
   - Scanning an inbox shows the digging squirrel with "Checked 18 of 48 emails…" and an orange bar, then
     "Found 3 new benefits" with links to the review queue (`/#review`) and All Benefits. Links with a `#section`
     now scroll to that section.
+  - The Assistant shows the question at once with a "Squirrel is thinking" typing indicator, and a new answer
+    appears line by line (sentence by sentence for one paragraph). Only the look is staggered; screen readers get
+    the whole answer at once.
   - Stat numbers count up; rows and stat cards slide in one after another; "Mark as used" shows a check and the
     row folds away; confirming a review item flies its name to the All Benefits link with "+1"; badges expiring
     within 3 days pulse once; the page links have a sliding highlight; an empty review queue shows the digging

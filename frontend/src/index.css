@@ -41,6 +41,7 @@
   --animate-pop: pop 200ms cubic-bezier(.2,.8,.2,1) both;
   --animate-dig: dig 2.4s ease-in-out infinite;
   --animate-bury: bury 2.4s ease-in-out infinite;
+  --animate-typing: typing 1.2s ease-in-out infinite;
 
   @keyframes rise {
     from { opacity: 0; transform: translateY(4px); }
@@ -57,6 +58,10 @@
     0%, 100% { transform: none; }
     60% { transform: rotate(-5deg) translateY(4px); }
     75% { transform: rotate(3deg); }
+  }
+  @keyframes typing {
+    0%, 60%, 100% { transform: none; opacity: .35; }
+    30% { transform: translateY(-4px); opacity: 1; }
   }
   @keyframes bury {
     0% { transform: translateY(-34px); opacity: 0; }

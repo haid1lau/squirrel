@@ -6,7 +6,6 @@ import { Button } from './ui/Button'
 import { Kbd } from './ui/Kbd'
 import { Card, CardHeader } from './ui/Card'
 import { Message } from './ui/Message'
-import { Skeleton } from './ui/Skeleton'
 
 interface AskFormProps {
   inputRef: Ref<HTMLInputElement>
@@ -14,11 +13,30 @@ interface AskFormProps {
   onAsked: (entry: AskEntry) => void
 }
 
+/** "Squirrel is thinking" with three bouncing dots, while an answer is on its way. */
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-3 justify-self-start rounded-xl bg-surface-2 px-4 py-3">
+      <span className="text-sm text-ink-muted">Squirrel is thinking</span>
+      <span aria-hidden className="flex gap-1">
+        {[0, 150, 300].map((delay) => (
+          <span
+            key={delay}
+            className="size-2 animate-typing rounded-full bg-ink-muted"
+            style={{ animationDelay: `${delay}ms` }}
+          />
+        ))}
+      </span>
+    </div>
+  )
+}
+
 export function AskForm({ inputRef, onAsked }: AskFormProps) {
   const [question, setQuestion] = useState('')
   const [fieldError, setFieldError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [asked, setAsked] = useState('')
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -30,6 +48,7 @@ export function AskForm({ inputRef, onAsked }: AskFormProps) {
     setFieldError(null)
     setError(null)
     setLoading(true)
+    setAsked(question.trim())
     try {
       onAsked(await api.ask(question))
       setQuestion('')
@@ -83,10 +102,10 @@ export function AskForm({ inputRef, onAsked }: AskFormProps) {
 
         <div aria-live="polite" className="grid gap-2">
           {loading ? (
-            <>
-              <Skeleton />
-              <Skeleton className="w-2/3" />
-            </>
+            <div className="grid animate-rise gap-2">
+              <p className="justify-self-end rounded-xl bg-primary-soft px-4 py-2 font-semibold">{asked}</p>
+              <TypingIndicator />
+            </div>
           ) : error ? (
             <Message tone="error">{error}</Message>
           ) : null}

@@ -10,6 +10,7 @@ export function AssistantPage() {
   const [history, setHistory] = useState<AskEntry[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [freshId, setFreshId] = useState<string | null>(null)
 
   useKeyboardShortcuts({ '/': () => questionRef.current?.focus() })
 
@@ -45,8 +46,20 @@ export function AssistantPage() {
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
         <div className="grid gap-6 lg:col-span-2">
-          <AskForm inputRef={questionRef} onAsked={(entry) => setHistory((h) => [entry, ...(h ?? [])])} />
-          <AskHistory entries={history} error={error} onRetry={retry} onCleared={() => setHistory([])} />
+          <AskForm
+            inputRef={questionRef}
+            onAsked={(entry) => {
+              setFreshId(entry.id)
+              setHistory((h) => [entry, ...(h ?? [])])
+            }}
+          />
+          <AskHistory
+            entries={history}
+            freshId={freshId}
+            error={error}
+            onRetry={retry}
+            onCleared={() => setHistory([])}
+          />
         </div>
         <DigestCard />
       </div>

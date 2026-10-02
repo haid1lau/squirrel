@@ -11,14 +11,38 @@ import { Skeleton } from './ui/Skeleton'
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 
+/**
+ * The answer in pieces (its lines, or its sentences if it's one paragraph), so a
+ * new answer can appear one piece at a time. Only the look is staggered: the
+ * whole text is in the page at once for screen readers.
+ */
+function RevealedAnswer({ text }: { text: string }) {
+  const lines = text.split('\n')
+  const pieces = lines.length > 1 ? lines : text.split(/(?<=[.!?])\s+/)
+  const join = lines.length > 1 ? '\n' : ' '
+  return (
+    <>
+      {pieces.map((piece, i) => (
+        // Fixed for a given answer, so the index is a safe key.
+        <span key={i} className="animate-rise" style={{ animationDelay: `${i * 180}ms` }}>
+          {piece}
+          {i < pieces.length - 1 ? join : null}
+        </span>
+      ))}
+    </>
+  )
+}
+
 interface AskHistoryProps {
   entries: AskEntry[] | null
+  /** The answer just asked for, which appears line by line. */
+  freshId?: string | null
   error: string | null
   onRetry: () => void
   onCleared: () => void
 }
 
-export function AskHistory({ entries, error, onRetry, onCleared }: AskHistoryProps) {
+export function AskHistory({ entries, freshId, error, onRetry, onCleared }: AskHistoryProps) {
   const toast = useToast()
   const [armed, click, reset] = useArmedAction()
   const [clearing, setClearing] = useState(false)
@@ -80,7 +104,9 @@ export function AskHistory({ entries, error, onRetry, onCleared }: AskHistoryPro
                   <div>
                     <AiLabel />
                   </div>
-                  <p className="rounded-xl bg-surface-2 px-4 py-3 whitespace-pre-wrap">{entry.answer}</p>
+                  <p className="rounded-xl bg-surface-2 px-4 py-3 whitespace-pre-wrap">
+                    {entry.id === freshId ? <RevealedAnswer text={entry.answer} /> : entry.answer}
+                  </p>
                 </li>
               ))}
             </ol>

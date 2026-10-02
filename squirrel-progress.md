@@ -82,4 +82,5 @@ The real app is this folder (`server.py` + React in `frontend/`), served at http
 - Nothing from the design. Animations done 2026-10-02 (see PROGRESS.md section 15).
 - Scan inbox progress: done 2026-10-02
 - Falling acorns: play on each Mark as used and Log a use, and when the review queue is cleared (matches the prototype; fixed 2026-10-02)
-- Not done yet, from the planned extras: Assistant typing indicator and line-by-line answers
+- Assistant typing indicator and line-by-line answers: done 2026-10-02
+- Everything from the design and the planned extras is now in the real app
