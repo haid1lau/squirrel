@@ -1,0 +1,258 @@
+// Typed client for server.py. Benefit mirrors ExtractedBenefit in app.py.
+
+export type ExpiryConfidence = 'explicit' | 'computed' | 'ambiguous' | 'unknown'
+
+export interface Benefit {
+  id: string
+  /**
+   * imap: another email account (Yahoo, iCloud, ...). loyalty: a membership spotted from who emails
+   * the user. manual: typed in on the All Benefits page.
+   */
+  source: 'gmail' | 'imap' | 'loyalty' | 'card' | 'manual'
+  is_benefit: boolean
+  benefit_name: string
+  provider: string
+  /** What kind of benefit it is (TYPES). */
+  type: string
+  /** What it's spent on (CATEGORIES). */
+  category: string
+  value: string | null
+  /** A points/miles balance the user entered, shown instead of value. */
+  points?: number | null
+  /** Loyalty memberships: "points", "miles" or "Avios". */
+  points_unit?: string
+  /** When to email about it: null uses the account default, "off" never, a number is days before expiry. */
+  reminder?: number | 'off' | null
+  expiry_date: string | null
+  expiry_confidence: ExpiryConfidence
+  expiry_reasoning: string
+  terms_summary: string | null
+  source_snippet: string
+  /** Gmail benefits only: link to the email and its subject line. */
+  source_link?: string
+  source_label?: string | null
+  /** IMAP benefits only: the address the email came from. */
+  source_account?: string
+  needs_review: boolean
+  review_reason: string | null
+  days_until_expiry: number | null
+}
+
+export const TYPES = ['membership', 'subscription', 'voucher', 'other'] as const
+
+export const CATEGORIES: Record<string, string> = {
+  entertainment: 'Entertainment',
+  transport: 'Transport',
+  travel: 'Travel',
+  dining: 'Dining',
+  wellness: 'Wellness',
+  shopping: 'Shopping',
+  other: 'Others',
+}
+
+/** The fields a user can set when adding or editing (see _read_benefit_fields in server.py). */
+export interface BenefitEdit {
+  benefit_name: string
+  provider: string
+  type: string
+  category: string
+  value: string
+  /** Whole number as typed; empty when the benefit has a value instead. */
+  points: string
+  expiry_date: string
+  terms_summary: string
+  /** "default", "off" or days before expiry, as text. */
+  reminder: string
+}
+
+/** Days before expiry a reminder can be sent (DAY_CHOICES in reminders.py). */
+export const REMINDER_DAYS: Record<number, string> = {
+  0: 'On the day',
+  1: '1 day before',
+  2: '2 days before',
+  3: '3 days before',
+  7: '1 week before',
+  14: '2 weeks before',
+  30: '1 month before',
+  60: '2 months before',
+  90: '3 months before',
+  180: '6 months before',
+}
+
+export interface ReminderSettings {
+  enabled: boolean
+  days_before: number
+  /** A different reminder for some categories, e.g. { travel: 180, dining: 'off' }. */
+  categories: Record<string, number | 'off'>
+  /** The time zone reminders follow (reported by the browser), or null before it has been. */
+  timezone: string | null
+  /** Where reminders go: the account's email. */
+  email: string
+  /** False when the server has no SMTP settings, so emails are only printed in its terminal. */
+  email_enabled: boolean
+}
+
+export interface AskEntry {
+  id: string
+  question: string
+  answer: string
+  created_at: string
+}
+
+export interface RankedBenefit {
+  benefit_name: string
+  provider: string
+  urgency_score: number
+  reason: string
+}
+
+export interface Digest {
+  ranked_benefits: RankedBenefit[]
+  digest_text: string
+}
+
+export interface User {
+  id: string
+  email: string
+  name: string | null
+  has_password: boolean
+}
+
+export interface GmailConnection {
+  email: string
+  connected_at: string
+  last_sync_at: string | null
+}
+
+export interface Session {
+  user: User | null
+  google_enabled: boolean
+  gmail: GmailConnection | null
+}
+
+export interface ScanStatus {
+  state: 'idle' | 'running' | 'done' | 'error'
+  checked?: number
+  total?: number | null
+  added?: number
+  needs_review?: number
+  skipped?: number
+  failed?: number
+  remaining?: number
+  /** Loyalty memberships newly found from who emails the user. */
+  memberships?: number
+  message?: string | null
+}
+
+export interface ImapAccount {
+  id: string
+  email: string
+  host: string
+  connected_at: string
+  last_sync_at: string | null
+  scan: ScanStatus
+}
+
+export interface CatalogCard {
+  key: string
+  name: string
+  needs_anniversary: boolean
+  perks: { name: string; value: string; resets: string }[]
+}
+
+export interface UserCard {
+  id: string
+  card_key: string
+  name: string
+  anniversary_month: number | null
+}
+
+export interface CardsResponse {
+  cards: UserCard[]
+  catalog: { checked: string; cards: CatalogCard[] }
+}
+
+// Called when any request finds the session has ended, so the app can show
+// the sign-in screen instead of a wall of errors.
+let onUnauthorized: (() => void) | null = null
+export const setUnauthorizedHandler = (fn: (() => void) | null) => {
+  onUnauthorized = fn
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(path, {
+      ...init,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...init.headers },
+    })
+  } catch (e) {
+    if (init.signal?.aborted) throw e
+    throw new Error("Couldn't reach the Squirrel server. Is server.py running?")
+  }
+
+  let data: unknown = null
+  try {
+    data = await res.json()
+  } catch {
+    // Non-JSON body; handled below.
+  }
+  if (!res.ok) {
+    if (res.status === 401) onUnauthorized?.()
+    const message = (data as { error?: string } | null)?.error
+    throw new Error(message ?? `Request failed (${res.status}).`)
+  }
+  return data as T
+}
+
+const post = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) })
+
+export const api = {
+  session: () => request<Session>('/api/session'),
+  register: (email: string, password: string, name: string) =>
+    request<{ user: User }>('/api/auth/register', post({ email, password, name })),
+  login: (email: string, password: string) => request<{ user: User }>('/api/auth/login', post({ email, password })),
+  logout: () => request<{ ok: true }>('/api/auth/logout', post({})),
+  forgotPassword: (email: string) =>
+    request<{ ok: true; email_enabled: boolean }>('/api/auth/forgot', post({ email })),
+  resetPassword: (token: string, password: string) =>
+    request<{ user: User }>('/api/auth/reset', post({ token, password })),
+
+  listBenefits: (signal?: AbortSignal) => request<Benefit[]>('/api/benefits', { signal }),
+  approve: (id: string, expiryDate: string) =>
+    request<Benefit>(`/api/benefits/${id}/approve`, post({ expiry_date: expiryDate })),
+  dismiss: (id: string) => request<{ ok: true }>(`/api/benefits/${id}/dismiss`, post({})),
+  createBenefit: (fields: BenefitEdit) => request<Benefit>('/api/benefits', post(fields)),
+  updateBenefit: (id: string, changes: BenefitEdit) => request<Benefit>(`/api/benefits/${id}/update`, post(changes)),
+  digest: () => request<Digest>('/api/digest'),
+  ask: (question: string) => request<AskEntry>('/api/ask', post({ question })),
+  askHistory: (signal?: AbortSignal) => request<AskEntry[]>('/api/ask/history', { signal }),
+  clearAskHistory: () => request<{ ok: true }>('/api/ask/history/clear', post({})),
+
+  gmailStatus: () => request<{ connection: GmailConnection | null; scan: ScanStatus }>('/api/gmail/status'),
+  startScan: () => request<ScanStatus>('/api/gmail/scan', post({})),
+  disconnectGmail: () => request<{ ok: true }>('/api/gmail/disconnect', post({})),
+
+  imapAccounts: () => request<ImapAccount[]>('/api/imap'),
+  connectImap: (email: string, password: string, host: string) =>
+    request<ImapAccount>('/api/imap', post({ email, password, host })),
+  scanImap: (id: string) => request<ScanStatus>(`/api/imap/${id}/scan`, post({})),
+  removeImap: (id: string) => request<{ ok: true }>(`/api/imap/${id}/remove`, post({})),
+
+  reminders: () => request<ReminderSettings>('/api/reminders'),
+  saveReminders: (s: Pick<ReminderSettings, 'enabled' | 'days_before' | 'categories'>) =>
+    request<ReminderSettings>('/api/reminders', post(s)),
+  setTimezone: (timezone: string) => request<{ ok: true }>('/api/timezone', post({ timezone })),
+
+  cards: () => request<CardsResponse>('/api/cards'),
+  addCard: (cardKey: string, anniversaryMonth: number | null) =>
+    request<UserCard>('/api/cards', post({ card_key: cardKey, anniversary_month: anniversaryMonth })),
+  removeCard: (id: string) => request<{ ok: true }>(`/api/cards/${id}/remove`, post({})),
+}
+
+/** Full-page navigations (not fetch): Google needs to show its own pages. */
+export const googleUrl = (purpose: 'login' | 'connect') => `/api/auth/google/start?purpose=${purpose}`
+
+export const errorMessage = (e: unknown) =>
+  e instanceof Error ? e.message : 'Something went wrong.'

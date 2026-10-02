@@ -1,0 +1,202 @@
+import {
+  ChevronDown,
+  CircleUser,
+  House,
+  ListChecks,
+  LoaderCircle,
+  LogOut,
+  MessageCircle,
+  Moon,
+  Plug,
+  Sun,
+  type LucideIcon,
+} from 'lucide-react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { cn } from '../lib/cn'
+import { PAGES } from '../lib/router'
+import { setTheme, useTheme } from '../lib/theme'
+import { Link } from './Link'
+
+const PAGE_ICONS: Record<string, LucideIcon> = {
+  '/': House,
+  '/benefits': ListChecks,
+  '/assistant': MessageCircle,
+  '/connections': Plug,
+}
+
+// On phones there's no room for the toggle in the header, so it sits in the account panel instead.
+function ThemeToggle() {
+  const theme = useTheme()
+  const next = theme === 'dark' ? 'light' : 'dark'
+  const label = `Switch to ${next} mode`
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={() => setTheme(next)}
+      className="hidden size-11 cursor-pointer place-items-center rounded-xl border border-line bg-surface text-ink transition-colors duration-150 hover:bg-surface-2 sm:grid"
+    >
+      {theme === 'dark' ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
+    </button>
+  )
+}
+
+/** The signed-in email; opens a small panel with "Sign out". */
+function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+  const theme = useTheme()
+  const nextTheme = theme === 'dark' ? 'light' : 'dark'
+  const panelId = useId()
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  // Close on a click outside, or Escape (focus goes back to the email button).
+  useEffect(() => {
+    if (!open) return
+    function onPointerDown(e: PointerEvent) {
+      if (!wrapperRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div
+      ref={wrapperRef}
+      className="relative"
+      // Tabbing out of the panel closes it.
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false)
+      }}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={`Account: ${email}`}
+        title={email}
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-medium text-ink-muted transition-colors duration-150 hover:bg-surface-2 hover:text-ink sm:px-3',
+          open && 'bg-surface-2 text-ink',
+        )}
+      >
+        <CircleUser className="size-5 shrink-0" aria-hidden />
+        <span className="hidden max-w-48 truncate lg:inline">{email}</span>
+        <ChevronDown
+          className={cn('hidden size-4 shrink-0 transition-transform duration-150 sm:block', open && 'rotate-180')}
+          aria-hidden
+        />
+      </button>
+
+      {open ? (
+        <div
+          id={panelId}
+          className="absolute top-full right-0 z-30 mt-2 grid w-64 max-w-[calc(100vw-2rem)] animate-rise gap-1 rounded-xl border border-line bg-surface p-1.5 shadow-lg shadow-slate-900/10"
+        >
+          <div className="px-2.5 py-2">
+            <p className="text-xs text-ink-muted">Signed in as</p>
+            <p className="truncate text-sm font-semibold" title={email}>
+              {email}
+            </p>
+          </div>
+          <div className="h-px bg-line" aria-hidden />
+          <button
+            type="button"
+            onClick={() => setTheme(nextTheme)}
+            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-surface-2 sm:hidden"
+          >
+            {theme === 'dark' ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
+            {nextTheme === 'dark' ? 'Dark mode' : 'Light mode'}
+          </button>
+          <button
+            type="button"
+            aria-disabled={signingOut || undefined}
+            onClick={async () => {
+              if (signingOut) return
+              setSigningOut(true)
+              await onSignOut()
+            }}
+            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm font-semibold text-danger transition-colors duration-150 hover:bg-danger-soft aria-disabled:cursor-not-allowed aria-disabled:opacity-70"
+          >
+            {signingOut ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <LogOut className="size-4" aria-hidden />
+            )}
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+interface HeaderProps {
+  path: string
+  email: string
+  onSignOut: () => Promise<void>
+}
+
+export function Header({ path, email, onSignOut }: HeaderProps) {
+  return (
+    <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center gap-1 px-3 py-2.5 min-[360px]:gap-2 min-[360px]:px-4 sm:gap-6 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="-mx-1 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2.5 rounded-lg px-1 font-bold tracking-tight"
+          aria-label="Squirrel, go to the dashboard"
+        >
+          <img src="/icon-192.png" alt="" width={36} height={36} className="size-9" />
+          <span className="hidden sm:inline">Squirrel</span>
+        </Link>
+
+        <nav aria-label="Pages" className="min-w-0 flex-1">
+          <ul className="flex gap-0.5 overflow-x-auto min-[360px]:gap-1 [scrollbar-width:none]">
+            {PAGES.map((p) => {
+              const PageIcon = PAGE_ICONS[p.path]
+              return (
+                <li key={p.path}>
+                  <Link
+                    href={p.path}
+                    aria-current={path === p.path ? 'page' : undefined}
+                    aria-label={p.label}
+                    title={p.label}
+                    className={cn(
+                      'flex min-h-11 min-w-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2 text-sm font-medium transition-colors duration-150 sm:px-3',
+                      path === p.path
+                        ? 'bg-primary-soft text-primary-text'
+                        : 'text-ink-muted hover:bg-surface-2 hover:text-ink',
+                    )}
+                  >
+                    {/* Phones: icons, with the current page's name when there's room. */}
+                    <PageIcon className="size-5 sm:hidden" aria-hidden />
+                    {path === p.path ? <span className="hidden min-[360px]:inline sm:hidden">{p.short}</span> : null}
+                    <span className="hidden sm:inline">{p.label}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <AccountMenu email={email} onSignOut={onSignOut} />
+        </div>
+      </div>
+    </header>
+  )
+}
