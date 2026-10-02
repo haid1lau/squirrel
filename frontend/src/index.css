@@ -77,6 +77,11 @@
     0%, 100% { transform: scale(.8); opacity: .3; }
     50% { transform: translateY(-8px) scale(1.15); opacity: .9; }
   }
+  /* Fog in the gorge drifts sideways and thins out. */
+  @keyframes fog {
+    from { transform: translateX(-10px); opacity: 1; }
+    to { transform: translateX(12px); opacity: .55; }
+  }
   @keyframes rise {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: none; }
@@ -118,6 +123,9 @@
   --wood-far: #E6DFD5;
   --wood-back: #DED3C3;
   --wood-rock: #C6BCB1;
+  --wood-rock-shade: #ACA296;
+  --wood-pine: #ADB89B;
+  --wood-fog: #FFFFFF;   --wood-fog-o: 0.85;
   --wood-mid: #D2D7BE;
   --wood-near: #D6C8BA;
   --wood-leaf: #E0A082;
@@ -159,6 +167,9 @@
     --wood-far: #22325A;
     --wood-back: #182543;
     --wood-rock: #1E2C4C;
+    --wood-rock-shade: #131C33;
+    --wood-pine: #0C1529;
+    --wood-fog: #9DB2D9;   --wood-fog-o: 0.22;
     --wood-mid: #0E182D;
     --wood-near: #060B17;
     --wood-leaf: #4F231F;
@@ -203,6 +214,9 @@
   --wood-far: #22325A;
   --wood-back: #182543;
   --wood-rock: #1E2C4C;
+  --wood-rock-shade: #131C33;
+  --wood-pine: #0C1529;
+  --wood-fog: #9DB2D9;   --wood-fog-o: 0.22;
   --wood-mid: #0E182D;
   --wood-near: #060B17;
   --wood-leaf: #4F231F;
@@ -236,6 +250,11 @@
   .wood-far { fill: var(--wood-far); }
   .wood-back { fill: var(--wood-back); }
   .wood-rock { fill: var(--wood-rock); }
+  .wood-rock-shade { fill: var(--wood-rock-shade); }
+  .wood-cracks { fill: none; stroke: var(--wood-rock-shade); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .wood-pine { fill: var(--wood-pine); }
+  .wood-fog { fill: var(--wood-fog); opacity: var(--wood-fog-o); }
+  .wood-fog ellipse { animation: fog 14s ease-in-out infinite alternate; }
   .wood-mid { fill: var(--wood-mid); }
   .wood-near { fill: var(--wood-near); }
   .wood-leaf { fill: var(--wood-leaf); }
@@ -330,7 +349,7 @@
   html { scroll-behavior: auto; }
   body::before { animation: none; }
   .wood-fireflies circle { animation: none; opacity: 0.85; }
-  .wood-streaks line, .wood-mist circle { animation: none; }
+  .wood-streaks line, .wood-mist circle, .wood-fog ellipse { animation: none; }
   .wood-ripples ellipse { animation: none; opacity: 0.5; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

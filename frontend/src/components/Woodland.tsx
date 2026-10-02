@@ -1,5 +1,6 @@
 // A mountain woodland along the bottom of the screen, behind everything:
-// snow-capped peaks, pine-covered hills, a cliff with a waterfall into a pool,
+// snow-capped peaks, pine-covered hills, a misty gorge between two mountains
+// with a waterfall into a pool,
 // oaks and pines, a squirrel holding an acorn, and fallen leaves. Night forest
 // with fireflies in dark mode. Colours are the --wood-* and --water tokens in
 // index.css; each layer is one solid colour, so nearer shapes hide farther ones.
@@ -16,7 +17,7 @@ type Tree = [x: number, base: number, size: number, kind: 'oak' | 'pine']
 const RANGE: [x: number, y: number, snow?: boolean][] = [
   [0, 430], [60, 400], [110, 415], [190, 362, true], [250, 395], [300, 382], [380, 420], [450, 372],
   [520, 340, true], [590, 385], [640, 372], [700, 410], [780, 366], [850, 335, true], [930, 390],
-  [990, 376], [1060, 410], [1130, 362], [1190, 346], [1250, 330, true], [1320, 376], [1380, 360],
+  [990, 376], [1060, 410], [1130, 362], [1190, 334, true], [1250, 404], [1310, 330, true], [1380, 368],
   [1440, 392],
 ]
 
@@ -24,8 +25,18 @@ const FAR_HILL = 'M0 470 C180 440 320 448 460 462 C600 476 700 436 880 442 C1040
 const BACK_HILL = 'M0 520 C140 495 260 495 400 510 C540 525 640 495 780 498 C940 500 1040 522 1200 515 C1320 508 1400 505 1440 508 V640 H0Z'
 const MID_HILL = 'M0 560 C160 540 300 545 440 555 C600 570 720 545 880 548 C1040 550 1160 560 1300 556 C1380 553 1420 550 1440 552 V640 H0Z'
 const NEAR_HILL = 'M0 612 C200 600 360 603 520 610 C700 618 860 598 1040 603 C1200 608 1320 618 1440 608 V640 H0Z'
-// The cliff the waterfall pours off, in front of the back hills.
-const CLIFF = 'M1140 522 L1150 472 L1164 442 L1184 420 L1210 409 L1262 407 L1286 415 L1301 432 L1313 462 L1326 522Z'
+// The gorge: two steep mountain flanks with the waterfall dropping between them
+// (after a photo of a waterfall in a misty ravine). The gap behind the water is
+// filled with distant, hazy mountain; the inner walls are in shadow.
+const GORGE_GAP = 'M1190 350 L1282 344 L1266 600 L1206 600Z'
+const LEFT_FLANK = 'M1020 600 L1040 540 L1066 500 L1090 462 L1114 428 L1138 396 L1160 368 L1178 346 L1192 338 L1202 356 L1210 392 L1215 432 L1219 480 L1222 600Z'
+const RIGHT_FLANK = 'M1250 600 L1252 480 L1256 436 L1262 396 L1270 362 L1282 340 L1296 332 L1312 344 L1334 370 L1358 400 L1384 436 L1410 478 L1440 520 L1440 600Z'
+const LEFT_WALL = 'M1192 338 L1202 356 L1210 392 L1215 432 L1219 480 L1222 600 L1196 600 L1198 480 L1196 430 L1194 390 L1190 356Z'
+const RIGHT_WALL = 'M1282 340 L1270 362 L1262 396 L1256 436 L1252 480 L1250 600 L1274 600 L1276 480 L1279 430 L1282 390 L1286 356Z'
+// Snow on the two summits either side of the gorge.
+const SUMMIT_SNOW = 'M1178 346 L1192 338 L1202 356 L1197 354 L1192 362 L1186 353 L1172 357Z M1282 340 L1296 332 L1312 344 L1318 352 L1306 350 L1298 358 L1290 349 L1276 352Z'
+// Cracks and ledges in the rock.
+const CRACKS = 'M1110 450 l16 24 l-4 20 M1070 520 l20 12 l6 24 M1150 410 l10 30 M1330 380 l-10 24 l4 20 M1380 450 l-16 18 l2 26 M1300 420 l6 34 M1410 500 l-12 20'
 
 /** Roughly where the far hill's top is at x, so its pines stand on it. */
 function farHillY(x: number) {
@@ -63,10 +74,11 @@ const BACK: Tree[] = [
   [1380, 514, 1.6, 'pine'],
   [1425, 514, 1.4, 'pine'],
 ]
-// Two pines on top of the cliff.
-const CLIFF_TOP: Tree[] = [
-  [1178, 432, 1.2, 'pine'],
-  [1292, 426, 1.1, 'pine'],
+// Pines climbing both flanks of the gorge.
+const GORGE_PINES: Tree[] = [
+  [1048, 534, 1.2, 'pine'], [1072, 498, 1.15, 'pine'], [1096, 462, 1.05, 'pine'], [1120, 428, 0.95, 'pine'],
+  [1142, 398, 0.85, 'pine'], [1162, 372, 0.75, 'pine'], [1316, 352, 0.75, 'pine'], [1338, 378, 0.85, 'pine'],
+  [1360, 406, 0.95, 'pine'], [1386, 442, 1.05, 'pine'], [1410, 480, 1.15, 'pine'], [1432, 514, 1.2, 'pine'],
 ]
 const MID: Tree[] = [
   [90, 556, 2.4, 'pine'],
@@ -75,15 +87,15 @@ const MID: Tree[] = [
   [470, 566, 2.2, 'pine'],
   [600, 572, 2.75, 'pine'],
   [760, 558, 2.6, 'pine'],
-  [900, 556, 2.4, 'pine'],
-  [1060, 560, 3.5, 'oak'],
+  [860, 556, 2.4, 'pine'],
+  [975, 556, 3.5, 'oak'],
   [1360, 562, 2.5, 'pine'],
 ]
 const NEAR: Tree[] = [
   [70, 622, 5.5, 'oak'],
   [300, 614, 3.5, 'pine'],
   [860, 612, 3.2, 'pine'],
-  [1410, 622, 5.5, 'oak'],
+  [1475, 622, 5.5, 'oak'],
 ]
 
 // [x, y, rotation]
@@ -101,12 +113,12 @@ const FIREFLIES: [number, number, number, number][] = [
   [1290, 500, 5, 3], [540, 560, 7, 5], [1060, 575, 6, 4.5], [250, 540, 8, 6],
 ]
 
-// The waterfall: pours off the cliff and lands in a pool on the middle hill.
-const FALL_TOP = 410
+// The waterfall: drops through the gorge and lands in a pool on the middle hill.
+const FALL_TOP = 350
 const FALL_FOOT = 566
 const POOL_Y = 560
 // [x, seconds]: each streak runs at its own speed so the water doesn't move in step.
-const STREAKS: [number, number][] = [[1223, 0.8], [1230, 0.65], [1237, 0.9], [1243, 0.72], [1250, 0.85]]
+const STREAKS: [number, number][] = [[1231, 0.8], [1236, 0.65], [1241, 0.9]]
 
 /** A snow cap following the mountain's slopes down from a peak, with a ragged lower edge. */
 function snowCap(i: number) {
@@ -152,6 +164,11 @@ export function Woodland() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-1 h-[40vh]">
       <svg className="size-full" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice">
+        <defs>
+          <filter id="wood-fog" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="9" />
+          </filter>
+        </defs>
         <path className="wood-mtn" d={`M${RANGE.map(([x, y]) => `${x} ${y}`).join(' L')} V${H} H0Z`} />
         <g className="wood-snow">
           {RANGE.map(([x, , snow], i) => (snow ? <path key={x} d={snowCap(i)} /> : null))}
@@ -167,12 +184,22 @@ export function Woodland() {
           <path d={BACK_HILL} />
         </g>
 
-        <path className="wood-rock" d={CLIFF} />
-        <g className="wood-back">{trees(CLIFF_TOP)}</g>
+        {/* The gorge: hazy distance in the gap, fog drifting through it, then the two flanks. */}
+        <path className="wood-mtn" d={GORGE_GAP} />
+        <g className="wood-fog" filter="url(#wood-fog)">
+          <ellipse cx={1236} cy={352} rx={60} ry={18} />
+          <ellipse cx={1240} cy={424} rx={36} ry={12} style={{ animationDelay: '-4s' }} />
+        </g>
+        <path className="wood-rock" d={LEFT_FLANK} />
+        <path className="wood-rock" d={RIGHT_FLANK} />
+        <path className="wood-rock-shade" d={LEFT_WALL} />
+        <path className="wood-rock-shade" d={RIGHT_WALL} />
+        <path className="wood-cracks" d={CRACKS} />
+        <path className="wood-snow" d={SUMMIT_SNOW} />
+        <g className="wood-pine">{trees(GORGE_PINES)}</g>
 
         <g className="wood-water">
-          <path d={`M1218 ${FALL_TOP} L1254 ${FALL_TOP} L1262 ${FALL_FOOT} L1210 ${FALL_FOOT}Z`} />
-          <ellipse cx={1236} cy={FALL_TOP} rx={20} ry={4} />
+          <path d={`M1229 ${FALL_TOP} L1243 ${FALL_TOP} L1251 ${FALL_FOOT} L1221 ${FALL_FOOT}Z`} />
         </g>
         <g className="wood-streaks">
           {STREAKS.map(([x, dur], i) => (
@@ -180,7 +207,7 @@ export function Woodland() {
               key={x}
               x1={x}
               y1={FALL_TOP}
-              x2={x + (x - 1236) * 0.25}
+              x2={x + (x - 1236) * 1.6}
               y2={FALL_FOOT}
               style={{ animationDuration: `${dur}s`, animationDelay: `${-i * 0.2}s` }}
             />
@@ -200,6 +227,9 @@ export function Woodland() {
               <circle key={x} cx={x} cy={POOL_Y - 2} r={11} style={{ animationDelay: `${-i * 0.7}s` }} />
             ))}
           </g>
+        </g>
+        <g className="wood-fog" filter="url(#wood-fog)">
+          <ellipse cx={1236} cy={548} rx={58} ry={12} style={{ animationDelay: '-7s' }} />
         </g>
         <g className="wood-ripples">
           {[0, 1.2].map((delay) => (
