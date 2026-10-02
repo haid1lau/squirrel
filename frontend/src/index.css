@@ -58,6 +58,13 @@
     50% { transform: translate(4%, -3%) rotate(6deg) scale(1.05); }
     to { transform: translate(-3%, 4%) rotate(-4deg) scale(1); }
   }
+  /* A firefly glows, drifts a little and fades. */
+  @keyframes firefly {
+    0%, 100% { opacity: 0; transform: none; }
+    40% { opacity: 1; }
+    50% { transform: translate(10px, -14px); }
+    70% { opacity: 0.8; }
+  }
   @keyframes rise {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: none; }
@@ -91,6 +98,17 @@
   }
 }
 
+/* The woodland along the bottom (components/Woodland.tsx): one colour and
+   opacity per layer, so overlapping shapes in a layer don't double up. */
+:root {
+  --wood-far: #C2410C;   --wood-far-o: 0.07;
+  --wood-back: #78532D;  --wood-back-o: 0.1;
+  --wood-mid: #4D5F1B;   --wood-mid-o: 0.12;
+  --wood-near: #6B4423;  --wood-near-o: 0.16;
+  --wood-leaf: #C2410C;  --wood-leaf-o: 0.32;
+  --wood-firefly: none;
+}
+
 /* Dark tokens: follow the system setting unless the user picked a theme
    with the header toggle (data-theme on <html>, see lib/theme.ts). */
 @media (prefers-color-scheme: dark) {
@@ -119,6 +137,12 @@
     --color-glow-rust: rgb(194 65 12 / 0.26);
     --color-glow-moss: rgb(77 124 15 / 0.22);
     --color-glow-sky: rgb(59 130 246 / 0.26);
+    --wood-far: #2A3D6B;   --wood-far-o: 0.75;
+    --wood-back: #1A2848;  --wood-back-o: 0.85;
+    --wood-mid: #0E182E;   --wood-mid-o: 0.9;
+    --wood-near: #050A16;  --wood-near-o: 0.9;
+    --wood-leaf: #7C2D12;  --wood-leaf-o: 0.6;
+    --wood-firefly: block;
     color-scheme: dark;
   }
 }
@@ -152,6 +176,12 @@
   --color-glow-rust: rgb(194 65 12 / 0.26);
   --color-glow-moss: rgb(77 124 15 / 0.22);
   --color-glow-sky: rgb(59 130 246 / 0.26);
+  --wood-far: #2A3D6B;   --wood-far-o: 0.75;
+  --wood-back: #1A2848;  --wood-back-o: 0.85;
+  --wood-mid: #0E182E;   --wood-mid-o: 0.9;
+  --wood-near: #050A16;  --wood-near-o: 0.9;
+  --wood-leaf: #7C2D12;  --wood-leaf-o: 0.6;
+  --wood-firefly: block;
   color-scheme: dark;
 }
 
@@ -171,6 +201,21 @@
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   box-shadow: inset 0 1px 0 var(--color-hl), 0 18px 40px -16px var(--color-shadow);
+}
+
+@layer components {
+  .wood-far { fill: var(--wood-far); opacity: var(--wood-far-o); }
+  .wood-back { fill: var(--wood-back); opacity: var(--wood-back-o); }
+  .wood-mid { fill: var(--wood-mid); opacity: var(--wood-mid-o); }
+  .wood-near { fill: var(--wood-near); opacity: var(--wood-near-o); }
+  .wood-leaf { fill: var(--wood-leaf); opacity: var(--wood-leaf-o); }
+  .wood-fireflies { display: var(--wood-firefly); fill: #FDE68A; }
+  .wood-fireflies circle {
+    opacity: 0;
+    filter: drop-shadow(0 0 4px #FCD34D);
+    transform-box: fill-box;
+    animation: firefly 6s ease-in-out infinite;
+  }
 }
 
 /* Hidden text under a field of drifting dots, like Telegram's spoilers. */
@@ -237,6 +282,7 @@
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   body::before { animation: none; }
+  .wood-fireflies circle { animation: none; opacity: 0.6; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

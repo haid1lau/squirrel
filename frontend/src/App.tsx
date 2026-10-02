@@ -3,6 +3,7 @@ import { AcornRain } from './components/acorn/AcornRain'
 import { CategoryArtSprite } from './components/CategoryArt'
 import { Header } from './components/Header'
 import { Link } from './components/Link'
+import { Woodland } from './components/Woodland'
 import { useBenefits } from './hooks/useBenefits'
 import type { Session, User } from './lib/api'
 import { PAGES, usePath } from './lib/router'
@@ -62,6 +63,7 @@ export default function App({ user, session, notice, onSessionChange, onSignOut 
   return (
     <>
       <CategoryArtSprite />
+      <Woodland />
       <AcornRain />
       <a
         href="#main"
