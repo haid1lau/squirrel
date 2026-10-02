@@ -1,7 +1,6 @@
-import { CreditCard, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { CreditCard, Plus, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { useArmedAction } from '../hooks/useArmedAction'
-import { api, errorMessage, type CardsResponse, type UserCard } from '../lib/api'
+import { api, errorMessage, type CardsResponse } from '../lib/api'
 import { cn } from '../lib/cn'
 import { fieldClass } from '../lib/styles'
 import { useToast } from '../lib/toast'
@@ -9,52 +8,11 @@ import { Button } from './ui/Button'
 import { Card, CardHeader, CountChip } from './ui/Card'
 import { Message } from './ui/Message'
 import { Skeleton } from './ui/Skeleton'
+import { WalletStack } from './WalletStack'
 
 const MONTHS = Array.from({ length: 12 }, (_, i) =>
   new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(2000, i, 1)),
 )
-
-function UserCardRow({ card, onRemoved }: { card: UserCard; onRemoved: (id: string) => void }) {
-  const toast = useToast()
-  const [armed, armOrConfirm, disarm] = useArmedAction()
-  const [busy, setBusy] = useState(false)
-
-  async function remove() {
-    if (!armOrConfirm()) return
-    setBusy(true)
-    try {
-      await api.removeCard(card.id)
-      onRemoved(card.id)
-      toast('info', `Removed ${card.name} and its perks.`)
-    } catch (e) {
-      toast('error', errorMessage(e))
-      setBusy(false)
-      disarm()
-    }
-  }
-
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 py-3">
-      <div className="min-w-0">
-        <p className="font-semibold">{card.name}</p>
-        {card.anniversary_month ? (
-          <p className="text-sm text-ink-muted">Anniversary in {MONTHS[card.anniversary_month - 1]}</p>
-        ) : null}
-      </div>
-      <Button
-        variant="danger"
-        icon={<Trash2 className="size-4" aria-hidden />}
-        loading={busy}
-        loadingLabel="Removing…"
-        onClick={remove}
-        aria-label={armed ? `Click again to remove ${card.name}` : `Remove ${card.name}`}
-        className={armed ? 'border-danger bg-danger-soft' : undefined}
-      >
-        {armed ? 'Click again' : 'Remove'}
-      </Button>
-    </li>
-  )
-}
 
 export function CardsPanel({ onChanged }: { onChanged: () => void }) {
   const toast = useToast()
@@ -135,11 +93,7 @@ export function CardsPanel({ onChanged }: { onChanged: () => void }) {
         ) : (
           <>
             {data.cards.length ? (
-              <ul className="divide-y divide-line border-y border-line">
-                {data.cards.map((c) => (
-                  <UserCardRow key={c.id} card={c} onRemoved={removed} />
-                ))}
-              </ul>
+              <WalletStack cards={data.cards} catalog={data.catalog.cards} onRemoved={removed} />
             ) : null}
 
             {available.length ? (

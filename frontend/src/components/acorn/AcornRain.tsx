@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { onCelebrate } from '../../lib/motion'
 
-const COUNT = 30 // the owner's choice: keep it at about 30
+const COUNT = 50 // the owner's choice (raised from 30 on 2 October 2026)
 const MAX_SECONDS = 3
 
 /**

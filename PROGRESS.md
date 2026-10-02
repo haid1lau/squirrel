@@ -305,11 +305,14 @@ Replaced "paste an email" with connected sources:
   December period uses the $35.
 - **Edit and Remove** moved into a ⋯ menu (`ui/MoreMenu.tsx`), drawn on `<body>` so cards can't cover it.
 - Stamp cards from the design were skipped on purpose.
+- **Credit cards** on Connections show as an Apple Wallet-style stack (`WalletStack.tsx`): each card's top strip
+  shows; tapping one slides it to the top with the rest piled underneath, and shows its perks and Remove. Card
+  faces are plain gradients by card key (no issuer logos); unknown cards get slate.
 - **Animations** (from the design; all fall back to fades or nothing with Reduce Motion):
   - A 3D acorn in the dashboard hero (`acorn/HeroAcorn.tsx`, model in `acorn/model.ts`, ported from three.js r149).
     It spins as you scroll, bobs, shakes when something expires within 3 days and settles when nothing needs
     review. three.js loads only on the dashboard, as a separate file.
-  - About 30 falling acorns (`acorn/AcornRain.tsx`, kept at 30 by the owner's choice), as in the prototype: on
+  - 50 falling acorns (`acorn/AcornRain.tsx`, the owner's choice), as in the prototype: on
     each Mark as used and Log a use, and when the review queue is cleared. Call `celebrate()` from `lib/motion.ts`.
   - Scanning an inbox shows the digging squirrel with "Checked 18 of 48 emails…" and an orange bar, then
     "Found 3 new benefits" with links to the review queue (`/#review`) and All Benefits. Links with a `#section`
