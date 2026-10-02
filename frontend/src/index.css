@@ -209,10 +209,10 @@
   .wood-mid { fill: var(--wood-mid); opacity: var(--wood-mid-o); }
   .wood-near { fill: var(--wood-near); opacity: var(--wood-near-o); }
   .wood-leaf { fill: var(--wood-leaf); opacity: var(--wood-leaf-o); }
-  .wood-fireflies { display: var(--wood-firefly); fill: #FDE68A; }
+  .wood-fireflies { display: var(--wood-firefly); fill: #FEF3C7; }
   .wood-fireflies circle {
     opacity: 0;
-    filter: drop-shadow(0 0 4px #FCD34D);
+    filter: drop-shadow(0 0 4px #FDE68A) drop-shadow(0 0 10px #FBBF24);
     transform-box: fill-box;
     animation: firefly 6s ease-in-out infinite;
   }
@@ -282,7 +282,7 @@
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   body::before { animation: none; }
-  .wood-fireflies circle { animation: none; opacity: 0.6; }
+  .wood-fireflies circle { animation: none; opacity: 0.85; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

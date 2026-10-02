@@ -82,7 +82,7 @@ export function Woodland() {
       <svg className="size-full" viewBox="0 0 1440 240" preserveAspectRatio="xMidYMax slice">
         <g className="wood-fireflies">
           {FIREFLIES.map(([x, y, dur, delay]) => (
-            <circle key={`${x}-${y}`} cx={x} cy={y} r={2.2} style={{ animationDuration: `${dur}s`, animationDelay: `${delay}s` }} />
+            <circle key={`${x}-${y}`} cx={x} cy={y} r={3.6} style={{ animationDuration: `${dur}s`, animationDelay: `${delay}s` }} />
           ))}
         </g>
 
