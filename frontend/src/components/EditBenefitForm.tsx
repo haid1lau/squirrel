@@ -40,6 +40,7 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
     points: benefit?.points != null ? String(benefit.points) : '',
     expiry_date: benefit?.expiry_date ?? '',
     terms_summary: benefit?.terms_summary ?? '',
+    code: benefit?.code ?? '',
     reminder: benefit?.reminder == null ? 'default' : String(benefit.reminder),
   })
   // A benefit is worth either a value ("$50") or a points balance; memberships default to points.
@@ -236,6 +237,18 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
               ))}
               <option value="off">Don’t remind me</option>
             </select>
+          </Field>
+          <Field id={`${id}-code`} label="Code" hint="The voucher or promo code to use at checkout, if it has one.">
+            <input
+              id={`${id}-code`}
+              value={form.code}
+              onChange={set('code')}
+              maxLength={64}
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              className={cn(fieldClass, 'border-line font-mono')}
+            />
           </Field>
           <Field id={`${id}-terms`} label="Terms">
             <textarea

@@ -234,6 +234,14 @@ BENEFIT_SCHEMA = {
             "type": "string",
             "description": "One-sentence plain-language summary of key conditions.",
         }),
+        "code": _nullable({
+            "type": "string",
+            "description": (
+                "The voucher, promo or redemption code to type or show at checkout, copied exactly "
+                "as written (e.g. \"BDAY-7Q2K\"). null if the email has no such code. Not an "
+                "order number, account number or membership number."
+            ),
+        }),
         "source_snippet": {
             "type": "string",
             "description": "The exact phrase the expiry info was drawn from, for user verification.",
@@ -250,6 +258,7 @@ BENEFIT_SCHEMA = {
         "expiry_confidence",
         "expiry_reasoning",
         "terms_summary",
+        "code",
         "source_snippet",
     ],
     "additionalProperties": False,
@@ -265,6 +274,9 @@ explicit start date). If the wording is vague, contradictory, or missing, set \
 expiry_date to null and expiry_confidence to "ambiguous" or "unknown" — do not \
 provide a plausible-sounding date. A missed reminder is a minor inconvenience; \
 a wrong reminder date is a real failure for the user.
+
+Copy any voucher or promo code exactly as written. Never make one up: if \
+there's no code in the email, set code to null.
 
 If the email is not actually about a benefit (marketing spam, an unrelated \
 receipt, a newsletter, etc.), set is_benefit to false.
@@ -288,6 +300,7 @@ class ExtractedBenefit:
     value: Optional[str] = None
     expiry_date: Optional[str] = None
     terms_summary: Optional[str] = None
+    code: Optional[str] = None  # a voucher or promo code; kept only if it appears in the email (see validate)
     points: Optional[int] = None  # a points/miles balance, entered by the user (never by the model)
     reminder: Union[int, str, None] = None  # set by the user: None (their default), "off" or days before expiry
     needs_review: bool = False  # set by validate(), not by the model
@@ -331,7 +344,7 @@ def extract_benefit_from_email(
 
     data = call_structured(SYSTEM_PROMPT, context + "\n" + truncated, BENEFIT_SCHEMA, name="benefit")
     extracted = ExtractedBenefit.from_model_output(data)
-    return validate(extracted, today=today)
+    return validate(extracted, today=today, email_text=truncated)
 
 
 # ---------------------------------------------------------------------------
@@ -344,13 +357,22 @@ def _flag(extracted: ExtractedBenefit, reason: str) -> None:
     extracted.review_reason = extracted.review_reason or reason
 
 
-def validate(extracted: ExtractedBenefit, today: Optional[date] = None) -> ExtractedBenefit:
+def validate(
+    extracted: ExtractedBenefit, today: Optional[date] = None, email_text: Optional[str] = None
+) -> ExtractedBenefit:
     """
     Sanity-checks the model's output with plain code. Anything suspicious
     routes the record into the "needs review" queue instead of silently
     entering the main tracker.
     """
     today = today or date.today()
+
+    # A code is only kept if it appears in the email word for word, so the
+    # model can't invent one. A wrong code at the till is worse than none.
+    code = (extracted.code or "").strip()
+    if not code or len(code) > 64 or (email_text is not None and code not in email_text):
+        code = None
+    extracted.code = code
 
     if extracted.expiry_confidence in ("ambiguous", "unknown"):
         extracted.expiry_date = None

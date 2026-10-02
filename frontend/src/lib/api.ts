@@ -27,6 +27,8 @@ export interface Benefit {
   expiry_confidence: ExpiryConfidence
   expiry_reasoning: string
   terms_summary: string | null
+  /** A voucher or promo code to use at checkout. */
+  code?: string | null
   source_snippet: string
   /** Gmail benefits only: link to the email and its subject line. */
   source_link?: string
@@ -75,6 +77,7 @@ export interface BenefitEdit {
   points: string
   expiry_date: string
   terms_summary: string
+  code: string
   /** "default", "off" or days before expiry, as text. */
   reminder: string
 }

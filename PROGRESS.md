@@ -305,6 +305,10 @@ Replaced "paste an email" with connected sources:
   December period uses the $35.
 - **Edit and Remove** moved into a ⋯ menu (`ui/MoreMenu.tsx`), drawn on `<body>` so cards can't cover it.
 - Stamp cards from the design were skipped on purpose.
+- **Copy code:** benefits have a `code` field. The model copies a voucher or promo code from the email, and
+  `validate()` keeps it only if it appears in the email word for word, so a made-up code is dropped. Users can
+  type or change it in the Add and Edit form. Cards with a code show it (selectable) and a **Copy code** button.
+  The demo's Birthday drink, Store credit, Companion fare and Glow Spa vouchers have codes.
 
 ## Known gaps and limitations
 

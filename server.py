@@ -550,6 +550,7 @@ class Handler(BaseHTTPRequestHandler):
                 "value": text("value", 100),
                 "expiry_date": text("expiry_date", 10),
                 "terms_summary": text("terms_summary", 500),
+                "code": text("code", 64),
                 "reminder": reminders.parse_reminder(data.get("reminder")),
             }
             if fields_["type"] not in TYPES:

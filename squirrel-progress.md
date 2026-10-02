@@ -76,7 +76,7 @@ The real app is this folder (`server.py` + React in `frontend/`), served at http
 - Main action by kind: Mark as used, Log a use with "$3 of $15 left", Update balance, renewal reminder switch
 - ⋯ menu for Edit and Remove, drawn above every card
 - Stamp cards: skipped (decision 2026-10-02)
+- Copy code: done. Codes come from emails (only if found word for word) or the Edit form
 
 **Still to bring over**
-- Show or Copy code: the app doesn't store voucher codes yet, so the email extraction would need a `code` field
 - The scan progress animation, the 3D header acorn and falling acorns, the "All caught up" squirrel

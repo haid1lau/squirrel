@@ -1,5 +1,5 @@
-import { CircleCheck, Coins, EyeOff, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react'
-import { useId, useState, type FormEvent } from 'react'
+import { Check, CircleCheck, Coins, Copy, EyeOff, Pencil, Receipt, RotateCcw, Trash2 } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useArmedAction } from '../hooks/useArmedAction'
 import { api, errorMessage, type Benefit, type QuickChange } from '../lib/api'
 import { cn } from '../lib/cn'
@@ -100,6 +100,8 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
           </Button>
         ) : null}
 
+        {benefit.code ? <CopyCode code={benefit.code} name={name} /> : null}
+
         {kind === 'credit' && left > 0 ? (
           <Button
             variant="primary"
@@ -188,6 +190,51 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
 
       {error ? <Message tone="error">{error}</Message> : null}
     </div>
+  )
+}
+
+const COPIED_MS = 1200
+
+/** The code as text (selectable, for reading out at a till) and a button that copies it. */
+function CopyCode({ code, name }: { code: string; name: string }) {
+  const toast = useToast()
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(code)
+    } catch {
+      toast('error', 'Couldn’t copy. Select the code and copy it yourself.')
+      return
+    }
+    setCopied(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setCopied(false), COPIED_MS)
+    toast('success', `Copied the code for “${name}”.`)
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <code className="rounded-lg bg-surface-2 px-2.5 py-1.5 font-mono text-sm font-semibold tracking-wide select-all">
+        {code}
+      </code>
+      <Button
+        icon={
+          copied ? (
+            <Check className="size-4 animate-rise text-ok" aria-hidden />
+          ) : (
+            <Copy className="size-4" aria-hidden />
+          )
+        }
+        onClick={copy}
+        aria-live="polite"
+      >
+        {copied ? 'Copied' : 'Copy code'}
+        <span className="sr-only"> for {name}</span>
+      </Button>
+    </span>
   )
 }
 

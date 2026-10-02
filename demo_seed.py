@@ -36,7 +36,7 @@ def _in(days: int) -> str:
 
 
 def _benefit(name, provider, type_, category, value, expiry_days, confidence, reasoning, terms, snippet, subject,
-             needs_review=False, review_reason=None) -> dict:
+             needs_review=False, review_reason=None, code=None) -> dict:
     return {
         "is_benefit": True,
         "benefit_name": name,
@@ -48,6 +48,7 @@ def _benefit(name, provider, type_, category, value, expiry_days, confidence, re
         "expiry_confidence": confidence,
         "expiry_reasoning": reasoning,
         "terms_summary": terms,
+        "code": code,
         "source_snippet": snippet,
         "needs_review": needs_review,
         "review_reason": review_reason,
@@ -58,7 +59,7 @@ def _benefit(name, provider, type_, category, value, expiry_days, confidence, re
 GMAIL_BENEFITS = [
     _benefit("Birthday drink voucher", "Harbor Coffee Co.", "voucher", "dining", "$25", 3, "explicit",
              "The email gives an exact expiry date.", "Any drink or pastry, one use, in store only.",
-             f"Redeem by {_in(3)}.", "Happy birthday, Alex! A treat on us"),
+             f"Redeem by {_in(3)}.", "Happy birthday, Alex! A treat on us", code="BDAY-7Q2K"),
     _benefit("$10 off your next 3 rides", "UrbanRide", "voucher", "transport", "$10 off × 3", 6, "explicit",
              "An exact end date is stated.", "Applies automatically to rides under $40.",
              f"Offer ends {_in(6)}.", "We miss you: $10 off your next 3 rides"),
@@ -67,17 +68,17 @@ GMAIL_BENEFITS = [
              "Guest passes are valid for 30 days from issue.", "Your quarterly guest passes are here"),
     _benefit("Store credit", "Northwind Books", "voucher", "shopping", "$15", 20, "explicit",
              "The credit's expiry date is given.", "Online or in store; can't be used on gift cards.",
-             f"Your $15 credit expires on {_in(20)}.", "You've earned $15 in store credit"),
+             f"Your $15 credit expires on {_in(20)}.", "You've earned $15 in store credit", code="NWB15-K8RT"),
     _benefit("Annual plan renewal", "StreamBox Premium", "subscription", "entertainment", "$119/year", 27, "explicit",
              "The renewal date is stated; cancel before it to avoid the charge.",
              "Renews automatically; cancel any time before the renewal date.",
              f"Your plan renews on {_in(27)}.", "Your StreamBox Premium plan renews soon"),
     _benefit("Companion fare", "Skyline Airways", "voucher", "travel", "Companion flies for taxes only", 45, "explicit",
              "An exact booking deadline is given.", "Economy only; book by the date, travel within 12 months.",
-             f"Book by {_in(45)}.", "Your Skyline companion fare is ready"),
+             f"Book by {_in(45)}.", "Your Skyline companion fare is ready", code="SKYCMP4471"),
     _benefit("20% off your next treatment", "Glow Spa", "voucher", "wellness", "20% off", 70, "explicit",
              "An exact expiry date is stated.", "Weekdays only; not with other offers.",
-             f"Valid until {_in(70)}.", "Thanks for visiting Glow Spa"),
+             f"Valid until {_in(70)}.", "Thanks for visiting Glow Spa", code="GLOW20"),
     _benefit("Free night certificate", "Lumen Hotels", "voucher", "travel", "1 free night", 160, "explicit",
              "The certificate's expiry date is given.", "Standard room, any participating hotel, blackout dates apply.",
              f"Certificate expires {_in(160)}.", "Your free night certificate has arrived"),
