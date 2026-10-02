@@ -33,11 +33,15 @@ export function DashboardPage({ user, benefits, error, onRetry, onConfirmed, onD
   return (
     <div className="grid gap-6">
       <section aria-labelledby="overview-title" className="grid gap-6">
-        <div>
-          <h1 id="overview-title" tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
+        <div className="glass rounded-[20px] px-5 py-5 sm:px-7 sm:py-6">
+          <h1
+            id="overview-title"
+            tabIndex={-1}
+            className="text-3xl font-extrabold tracking-[-0.02em] outline-none sm:text-[40px] sm:leading-tight"
+          >
             {firstName ? `${firstName}’s benefits` : 'Your benefits'}
           </h1>
-          <p className="mt-1 text-ink-muted">Memberships, vouchers and card perks as of {formatToday()}.</p>
+          <p className="mt-2 text-[17px] text-ink-muted">Memberships, vouchers and card perks as of {formatToday()}.</p>
         </div>
 
         <KpiRow

@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 export type Theme = 'light' | 'dark'
 
 const STORAGE_KEY = 'squirrel-theme'
-const BG = { light: '#F8FAFC', dark: '#0F172A' } // matches --color-bg
+const BG = { light: '#FFFFFF', dark: '#0B1324' } // matches --color-bg
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
 const listeners = new Set<() => void>()
 

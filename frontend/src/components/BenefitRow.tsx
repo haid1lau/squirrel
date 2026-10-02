@@ -3,10 +3,12 @@ import type { ReactNode } from 'react'
 import { CATEGORIES, REMINDER_DAYS, type Benefit } from '../lib/api'
 import { cn } from '../lib/cn'
 import { capitalize, formatDate, formatPoints, urgency } from '../lib/format'
+import { CategoryArt } from './CategoryArt'
 import { UrgencyBadge } from './UrgencyBadge'
 
 const METER_WINDOW_DAYS = 90
-const meterTone = { danger: 'bg-danger', warn: 'bg-warn', ok: 'bg-ok', neutral: 'bg-line' }
+// Brighter than the text tones, as in the design, so the bars read in both themes.
+const meterTone = { danger: 'bg-[#f87171]', warn: 'bg-[#f59e0b]', ok: 'bg-[#4ade80]', neutral: 'bg-line' }
 
 /** One benefit as a list item. `children` (e.g. action buttons) render under the details. */
 export function BenefitRow({ benefit, children }: { benefit: Benefit; children?: ReactNode }) {
@@ -36,9 +38,13 @@ export function BenefitRow({ benefit, children }: { benefit: Benefit; children?:
   const fill = days == null ? null : Math.max(4, Math.min(100, 100 - (Math.max(days, 0) / METER_WINDOW_DAYS) * 100))
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-5 py-4">
+    <li className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6 sm:py-5">
+      <CategoryArt
+        category={benefit.category}
+        className="row-span-2 size-12 self-start sm:row-span-1 sm:size-14 sm:self-center"
+      />
       <div className="min-w-0">
-        <p className="font-semibold">{benefit.benefit_name || 'Untitled benefit'}</p>
+        <p className="text-[17px] font-semibold">{benefit.benefit_name || 'Untitled benefit'}</p>
         <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-ink-muted">
           {meta.map((m, i) => (
             // Static per render and never reordered, so the index is a safe key.
@@ -46,31 +52,34 @@ export function BenefitRow({ benefit, children }: { benefit: Benefit; children?:
           ))}
         </p>
       </div>
-      {benefit.needs_review ? (
-        <span className="rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-warn">
-          Needs review
-        </span>
-      ) : (
-        <UrgencyBadge days={days} />
-      )}
+      {/* Phones: under the name. Wider screens: on the right. */}
+      <div className="justify-self-start sm:justify-self-end">
+        {benefit.needs_review ? (
+          <span className="rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-warn">
+            Needs review
+          </span>
+        ) : (
+          <UrgencyBadge days={days} />
+        )}
+      </div>
       {fill !== null && !benefit.needs_review ? (
-        <div className="col-span-2 h-1 overflow-hidden rounded-full bg-surface-2" aria-hidden>
+        <div className="col-span-full h-1 overflow-hidden rounded-full bg-surface-2" aria-hidden>
           <div className={cn('h-full rounded-full', meterTone[tone])} style={{ width: `${fill}%` }} />
         </div>
       ) : null}
-      {benefit.terms_summary ? <p className="col-span-2 text-sm text-ink-muted">{benefit.terms_summary}</p> : null}
+      {benefit.terms_summary ? <p className="col-span-full text-sm text-ink-muted">{benefit.terms_summary}</p> : null}
       {benefit.source_link ? (
         <a
           href={benefit.source_link}
           target="_blank"
           rel="noreferrer"
-          className="col-span-2 inline-flex min-h-11 items-center gap-1.5 justify-self-start text-sm font-semibold text-primary-text underline-offset-4 hover:underline"
+          className="col-span-full inline-flex min-h-11 items-center gap-1.5 justify-self-start text-sm font-semibold text-primary-text underline-offset-4 hover:underline"
         >
           <ExternalLink className="size-4" aria-hidden />
           Open the email<span className="sr-only"> for {benefit.benefit_name} (opens Gmail in a new tab)</span>
         </a>
       ) : null}
-      {children ? <div className="col-span-2">{children}</div> : null}
+      {children ? <div className="col-span-full">{children}</div> : null}
     </li>
   )
 }

@@ -1,0 +1,166 @@
+<!-- Squirrel scenes per category, from the Claude Design file (design/Squirrel.html). Used by CategoryArt.tsx. -->
+<defs>
+<g id="sq-head">
+<ellipse cx="-19" cy="-26" rx="9" ry="14" transform="rotate(-18 -19 -26)" fill="#fff" stroke="#2b2520" stroke-width="4"></ellipse>
+<ellipse cx="-19" cy="-25" rx="4" ry="8" transform="rotate(-18 -19 -26)" fill="#f4a6a6"></ellipse>
+<ellipse cx="19" cy="-26" rx="9" ry="14" transform="rotate(18 19 -26)" fill="#fff" stroke="#2b2520" stroke-width="4"></ellipse>
+<ellipse cx="19" cy="-25" rx="4" ry="8" transform="rotate(18 19 -26)" fill="#f4a6a6"></ellipse>
+<circle r="30" fill="#fff" stroke="#2b2520" stroke-width="4"></circle>
+<circle cx="-18" cy="9" r="6" fill="#f4a6a6" opacity="0.75"></circle>
+<circle cx="18" cy="9" r="6" fill="#f4a6a6" opacity="0.75"></circle>
+<rect x="-3.5" y="12" width="7" height="5" rx="1.5" fill="#fff" stroke="#2b2520" stroke-width="2"></rect>
+<path d="M-6 11 Q-3 15 0 11 Q3 15 6 11" fill="none" stroke="#2b2520" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+<ellipse cx="0" cy="5" rx="4.5" ry="3.2" fill="#2b2520"></ellipse>
+</g>
+<g id="eyes-open">
+<circle cx="-11" cy="-4" r="4.5" fill="#2b2520"></circle><circle cx="-9.5" cy="-5.5" r="1.6" fill="#fff"></circle>
+<circle cx="11" cy="-4" r="4.5" fill="#2b2520"></circle><circle cx="12.5" cy="-5.5" r="1.6" fill="#fff"></circle>
+</g>
+<g id="eyes-happy" fill="none" stroke="#2b2520" stroke-width="3.5" stroke-linecap="round">
+<path d="M-16 -2 Q-11 -10 -6 -2"></path><path d="M6 -2 Q11 -10 16 -2"></path>
+</g>
+<g id="eyes-calm" fill="none" stroke="#2b2520" stroke-width="3.5" stroke-linecap="round">
+<path d="M-16 -5 Q-11 1 -6 -5"></path><path d="M6 -5 Q11 1 16 -5"></path>
+</g>
+<g id="sq-tail">
+<path d="M0 0 C40 4 62 -30 52 -62 C46 -82 58 -96 72 -92 C70 -116 34 -122 26 -88 C20 -62 36 -42 18 -20 C12 -12 4 -6 0 0 Z" fill="#fff" stroke="#2b2520" stroke-width="4" stroke-linejoin="round"></path>
+<path d="M36 -70 C40 -58 38 -46 32 -36" fill="none" stroke="#2b2520" stroke-width="2.5" stroke-linecap="round" opacity="0.3"></path>
+</g>
+<g id="sq-body">
+<ellipse rx="27" ry="31" fill="#fff" stroke="#2b2520" stroke-width="4"></ellipse>
+<ellipse cy="5" rx="15" ry="21" fill="#f1e9dd"></ellipse>
+</g>
+<ellipse id="sq-foot" rx="11" ry="7" fill="#fff" stroke="#2b2520" stroke-width="4"></ellipse>
+<circle id="sq-hand" r="7" fill="#fff" stroke="#2b2520" stroke-width="4"></circle>
+
+<g id="scene-dining">
+<use href="#sq-tail" transform="translate(114 150)"></use>
+<use href="#sq-body" transform="translate(96 138)"></use>
+<path d="M72 106 L120 106 L96 144 Z" stroke="#2b2520" stroke-width="4" stroke-linejoin="round" style="fill:var(--a)"></path>
+<circle cx="88" cy="115" r="2.6" fill="#fff"></circle><circle cx="104" cy="115" r="2.6" fill="#fff"></circle><circle cx="96" cy="127" r="2.6" fill="#fff"></circle>
+<circle cx="88" cy="105" r="5" stroke="#2b2520" stroke-width="3" style="fill:var(--a)"></circle>
+<circle cx="104" cy="105" r="5" stroke="#2b2520" stroke-width="3" style="fill:var(--a)"></circle>
+<use href="#sq-head" transform="translate(96 76)"></use>
+<use href="#eyes-happy" transform="translate(96 76)"></use>
+<path d="M74 124 L62 156" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M74 124 L62 156" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<path d="M118 124 L130 156" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M118 124 L130 156" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<ellipse cx="96" cy="170" rx="62" ry="15" fill="#fff" stroke="#2b2520" stroke-width="4"></ellipse>
+<ellipse cx="96" cy="168" rx="46" ry="9" fill="none" stroke="#2b2520" stroke-width="2" opacity="0.25"></ellipse>
+<path d="M58 167 C60 147 76 138 96 138 C116 138 132 147 134 167 Z" stroke="#2b2520" stroke-width="4" stroke-linejoin="round" style="fill:var(--b)"></path>
+<path d="M68 159 q6 -7 12 0 t12 0 t12 0 t12 0 t12 0" fill="none" stroke="#2b2520" stroke-width="2" opacity="0.35" stroke-linecap="round"></path>
+<path d="M76 150 q5 -6 10 0 t10 0 t10 0 t10 0" fill="none" stroke="#2b2520" stroke-width="2" opacity="0.35" stroke-linecap="round"></path>
+<circle cx="86" cy="141" r="7" stroke="#2b2520" stroke-width="3" style="fill:var(--c)"></circle>
+<circle cx="106" cy="138" r="7" stroke="#2b2520" stroke-width="3" style="fill:var(--c)"></circle>
+<path d="M96 89 C86 104 110 116 98 140" fill="none" stroke="#2b2520" stroke-width="8" stroke-linecap="round"></path>
+<path d="M96 89 C86 104 110 116 98 140" fill="none" stroke-width="3.5" stroke-linecap="round" style="stroke:var(--b)"></path>
+<use href="#sq-hand" transform="translate(60 160)"></use>
+<use href="#sq-hand" transform="translate(132 160)"></use>
+</g>
+
+<g id="scene-transport">
+<ellipse cx="104" cy="177" rx="84" ry="5" fill="#2b2520" opacity="0.12"></ellipse>
+<use href="#sq-tail" transform="translate(76 124) scale(-0.7 0.7)"></use>
+<use href="#sq-body" transform="translate(92 112) scale(0.85)"></use>
+<use href="#sq-head" transform="translate(96 70)"></use>
+<use href="#eyes-happy" transform="translate(100 70)"></use>
+<path d="M128 121 L119 97 L126 95 L137 121 Z" stroke="#2b2520" stroke-width="3" stroke-linejoin="round" style="fill:var(--b)"></path>
+<path d="M22 150 C22 130 28 120 46 120 L136 120 C150 120 160 124 172 128 C182 131 186 138 186 148 L186 152 C186 156 183 158 179 158 L29 158 C25 158 22 155 22 150 Z" stroke="#2b2520" stroke-width="4" stroke-linejoin="round" style="fill:var(--a)"></path>
+<rect x="30" y="134" width="148" height="5" rx="2.5" fill="#fff" opacity="0.7"></rect>
+<path d="M96 124 L96 154" stroke="#2b2520" stroke-width="2.5" opacity="0.35" stroke-linecap="round"></path>
+<circle cx="179" cy="140" r="5" fill="#fff6c8" stroke="#2b2520" stroke-width="2.5"></circle>
+<rect x="21" y="128" width="5" height="9" rx="2" fill="oklch(0.62 0.2 25)"></rect>
+<path d="M112 112 L122 121" stroke="#2b2520" stroke-width="4" stroke-linecap="round"></path>
+<ellipse cx="112" cy="108" rx="4.5" ry="11" transform="rotate(-20 112 108)" fill="none" stroke="#2b2520" stroke-width="4"></ellipse>
+<path d="M100 100 L110 101" stroke="#2b2520" stroke-width="14" stroke-linecap="round"></path><path d="M100 100 L110 101" stroke="#fff" stroke-width="6" stroke-linecap="round"></path>
+<use href="#sq-hand" transform="translate(110 100) scale(0.9)"></use>
+<use href="#sq-hand" transform="translate(116 114) scale(0.9)"></use>
+<circle cx="56" cy="160" r="16" fill="#2b2520"></circle><circle cx="56" cy="160" r="6" fill="#cfc8bf"></circle>
+<circle cx="150" cy="160" r="16" fill="#2b2520"></circle><circle cx="150" cy="160" r="6" fill="#cfc8bf"></circle>
+</g>
+<g id="scene-travel">
+<ellipse cx="100" cy="178" rx="72" ry="5" fill="#2b2520" opacity="0.12"></ellipse>
+<use href="#sq-tail" transform="translate(114 144) scale(-0.62 0.62)"></use>
+<g transform="rotate(28 46 166)">
+<path d="M41 106 L41 80 M51 106 L51 80" stroke="#2b2520" stroke-width="4" stroke-linecap="round"></path>
+<rect x="36" y="74" width="20" height="8" rx="4" fill="#fff" stroke="#2b2520" stroke-width="3.5"></rect>
+<rect x="18" y="104" width="56" height="60" rx="9" stroke="#2b2520" stroke-width="4" style="fill:var(--a)"></rect>
+<path d="M32 106 L32 162 M60 106 L60 162" stroke="#2b2520" stroke-width="3" opacity="0.35"></path>
+<circle cx="46" cy="126" r="8" stroke="#2b2520" stroke-width="2.5" style="fill:var(--b)"></circle>
+<rect x="38" y="142" width="16" height="9" rx="2" fill="#fff" stroke="#2b2520" stroke-width="2.5"></rect>
+<circle cx="28" cy="168" r="5" fill="#2b2520"></circle><circle cx="64" cy="168" r="5" fill="#2b2520"></circle>
+</g>
+<use href="#sq-foot" transform="translate(118 164) rotate(-12)"></use>
+<use href="#sq-foot" transform="translate(150 162) rotate(10)"></use>
+<use href="#sq-body" transform="translate(134 128)"></use>
+<use href="#sq-head" transform="translate(136 80)"></use>
+<use href="#eyes-open" transform="translate(140 80)"></use>
+<path d="M118 114 L92 96" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M118 114 L92 96" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<use href="#sq-hand" transform="translate(90 95)"></use>
+<path d="M152 116 L162 138" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M152 116 L162 138" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<use href="#sq-hand" transform="translate(163 140)"></use>
+</g>
+
+<g id="scene-wellness">
+<circle cx="100" cy="76" r="46" style="fill:var(--b)"></circle>
+<rect x="30" y="160" width="140" height="14" rx="7" stroke="#2b2520" stroke-width="4" style="fill:var(--a)"></rect>
+<use href="#sq-tail" transform="translate(122 152) scale(0.72)"></use>
+<ellipse cx="100" cy="150" rx="47" ry="15" fill="#fff" stroke="#2b2520" stroke-width="4"></ellipse>
+<use href="#sq-body" transform="translate(100 118) scale(0.95)"></use>
+<use href="#sq-foot" transform="translate(84 154) rotate(-8)"></use>
+<use href="#sq-foot" transform="translate(116 154) rotate(8)"></use>
+<path d="M80 112 L60 140" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M80 112 L60 140" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<path d="M120 112 L140 140" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M120 112 L140 140" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<circle cx="58" cy="142" r="7" fill="#fff" stroke="#2b2520" stroke-width="4"></circle>
+<circle cx="142" cy="142" r="7" fill="#fff" stroke="#2b2520" stroke-width="4"></circle>
+<circle cx="58" cy="142" r="2" fill="#2b2520"></circle><circle cx="142" cy="142" r="2" fill="#2b2520"></circle>
+<use href="#sq-head" transform="translate(100 72)"></use>
+<use href="#eyes-calm" transform="translate(100 72)"></use>
+</g>
+
+<g id="scene-shopping">
+<ellipse cx="100" cy="182" rx="72" ry="5" fill="#2b2520" opacity="0.12"></ellipse>
+<use href="#sq-tail" transform="translate(118 150) scale(0.78)"></use>
+<use href="#sq-foot" transform="translate(88 172)"></use>
+<use href="#sq-foot" transform="translate(112 172)"></use>
+<use href="#sq-body" transform="translate(100 132)"></use>
+<use href="#sq-head" transform="translate(100 82)"></use>
+<use href="#eyes-happy" transform="translate(100 82)"></use>
+<path d="M44 148 Q54 122 64 148" fill="none" stroke="#2b2520" stroke-width="4" stroke-linecap="round"></path>
+<rect x="32" y="146" width="44" height="34" rx="4" stroke="#2b2520" stroke-width="4" style="fill:var(--a)"></rect>
+<circle cx="54" cy="163" r="5" fill="#fff"></circle>
+<path d="M136 142 Q146 116 156 142" fill="none" stroke="#2b2520" stroke-width="4" stroke-linecap="round"></path>
+<rect x="124" y="140" width="44" height="40" rx="4" stroke="#2b2520" stroke-width="4" style="fill:var(--b)"></rect>
+<rect x="138" y="152" width="16" height="16" rx="3" fill="#fff"></rect>
+<path d="M80 120 L58 134" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M80 120 L58 134" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<path d="M120 120 L142 128" stroke="#2b2520" stroke-width="15" stroke-linecap="round"></path><path d="M120 120 L142 128" stroke="#fff" stroke-width="7" stroke-linecap="round"></path>
+<use href="#sq-hand" transform="translate(55 136)"></use>
+<use href="#sq-hand" transform="translate(146 129)"></use>
+</g>
+
+<g id="scene-entertainment">
+<use href="#sq-tail" transform="translate(120 158) scale(0.78)"></use>
+<use href="#sq-foot" transform="translate(80 170)"></use>
+<use href="#sq-foot" transform="translate(120 170)"></use>
+<use href="#sq-body" transform="translate(100 136)"></use>
+<use href="#sq-head" transform="translate(100 68)"></use>
+<path d="M72 62 L66 58 M128 62 L134 58" stroke="#2b2520" stroke-width="4" stroke-linecap="round"></path>
+<rect x="71" y="55" width="58" height="19" rx="5" fill="#fff" stroke="#2b2520" stroke-width="4"></rect>
+<rect x="75" y="58.5" width="22" height="12" rx="3" style="fill:var(--c)"></rect>
+<rect x="103" y="58.5" width="22" height="12" rx="3" style="fill:var(--d)"></rect>
+<circle cx="76" cy="110" r="9" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="90" cy="104" r="9" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="110" cy="104" r="9" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="124" cy="110" r="9" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="100" cy="100" r="9" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="84" cy="114" r="8" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="100" cy="112" r="9" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<circle cx="116" cy="114" r="8" stroke="#2b2520" stroke-width="3" style="fill:var(--b)"></circle>
+<path d="M68 118 L132 118 L123 178 L77 178 Z" fill="#fff"></path>
+<path d="M68 118 L80.8 118 L86.2 178 L77 178 Z" style="fill:var(--a)"></path>
+<path d="M93.6 118 L106.4 118 L104.6 178 L95.4 178 Z" style="fill:var(--a)"></path>
+<path d="M119.2 118 L132 118 L123 178 L113.8 178 Z" style="fill:var(--a)"></path>
+<path d="M68 118 L132 118 L123 178 L77 178 Z" fill="none" stroke="#2b2520" stroke-width="4" stroke-linejoin="round"></path>
+<use href="#sq-hand" transform="translate(70 142)"></use>
+<use href="#sq-hand" transform="translate(130 142)"></use>
+</g>
+</defs>

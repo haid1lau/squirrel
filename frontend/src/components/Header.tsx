@@ -152,14 +152,14 @@ interface HeaderProps {
 
 export function Header({ path, email, onSignOut }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
+    <header className="sticky top-0 z-20 border-b border-line bg-header backdrop-blur-2xl backdrop-saturate-150">
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-3 py-2.5 min-[360px]:gap-2 min-[360px]:px-4 sm:gap-6 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="-mx-1 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2.5 rounded-lg px-1 font-bold tracking-tight"
           aria-label="Squirrel, go to the dashboard"
         >
-          <img src="/icon-192.png" alt="" width={36} height={36} className="size-9" />
+          <img src="/icon-192.png" alt="" width={36} height={36} className="size-9 rounded-[10px] shadow-[0_6px_18px_-6px_rgb(96_165_250/0.7)]" />
           <span className="hidden sm:inline">Squirrel</span>
         </Link>
 

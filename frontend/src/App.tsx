@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { CategoryArtSprite } from './components/CategoryArt'
 import { Header } from './components/Header'
 import { Link } from './components/Link'
 import { useBenefits } from './hooks/useBenefits'
@@ -53,6 +54,7 @@ export default function App({ user, session, notice, onSessionChange, onSignOut 
 
   return (
     <>
+      <CategoryArtSprite />
       <a
         href="#main"
         className="sr-only z-50 rounded-lg bg-surface px-4 py-2 font-semibold focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
