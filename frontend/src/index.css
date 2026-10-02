@@ -101,11 +101,11 @@
 /* The woodland along the bottom (components/Woodland.tsx): one colour and
    opacity per layer, so overlapping shapes in a layer don't double up. */
 :root {
-  --wood-far: #C2410C;   --wood-far-o: 0.07;
-  --wood-back: #78532D;  --wood-back-o: 0.1;
-  --wood-mid: #4D5F1B;   --wood-mid-o: 0.12;
-  --wood-near: #6B4423;  --wood-near-o: 0.16;
-  --wood-leaf: #C2410C;  --wood-leaf-o: 0.32;
+  --wood-far: #C2410C;   --wood-far-o: 0.12;
+  --wood-back: #78532D;  --wood-back-o: 0.16;
+  --wood-mid: #4D5F1B;   --wood-mid-o: 0.2;
+  --wood-near: #6B4423;  --wood-near-o: 0.26;
+  --wood-leaf: #C2410C;  --wood-leaf-o: 0.45;
   --wood-firefly: none;
 }
 
