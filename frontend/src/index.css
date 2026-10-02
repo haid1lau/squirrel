@@ -65,6 +65,18 @@
     50% { transform: translate(10px, -14px); }
     70% { opacity: 0.8; }
   }
+  /* Waterfall streaks: one dash pattern (18 + 14) twice, so the loop is seamless. */
+  @keyframes fall {
+    to { stroke-dashoffset: -64; }
+  }
+  @keyframes ripple {
+    from { transform: scale(.3); opacity: 1; }
+    to { transform: scale(1.15); opacity: 0; }
+  }
+  @keyframes mist {
+    0%, 100% { transform: scale(.8); opacity: .3; }
+    50% { transform: translateY(-8px) scale(1.15); opacity: .9; }
+  }
   @keyframes rise {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: none; }
@@ -107,6 +119,8 @@
   --wood-near: #6B4423;  --wood-near-o: 0.26;
   --wood-leaf: #C2410C;  --wood-leaf-o: 0.45;
   --wood-firefly: none;
+  --water: #0EA5E9;      --water-o: 0.3;
+  --water-streak: #FFFFFF; --water-streak-o: 0.9;
 }
 
 /* Dark tokens: follow the system setting unless the user picked a theme
@@ -143,6 +157,8 @@
     --wood-near: #050A16;  --wood-near-o: 0.9;
     --wood-leaf: #7C2D12;  --wood-leaf-o: 0.6;
     --wood-firefly: block;
+    --water: #60A5FA;      --water-o: 0.32;
+    --water-streak: #DBEAFE; --water-streak-o: 0.6;
     color-scheme: dark;
   }
 }
@@ -182,6 +198,8 @@
   --wood-near: #050A16;  --wood-near-o: 0.9;
   --wood-leaf: #7C2D12;  --wood-leaf-o: 0.6;
   --wood-firefly: block;
+  --water: #60A5FA;      --water-o: 0.32;
+  --water-streak: #DBEAFE; --water-streak-o: 0.6;
   color-scheme: dark;
 }
 
@@ -209,6 +227,23 @@
   .wood-mid { fill: var(--wood-mid); opacity: var(--wood-mid-o); }
   .wood-near { fill: var(--wood-near); opacity: var(--wood-near-o); }
   .wood-leaf { fill: var(--wood-leaf); opacity: var(--wood-leaf-o); }
+  .wood-water { fill: var(--water); opacity: var(--water-o); }
+  .wood-streaks {
+    fill: none;
+    stroke: var(--water-streak);
+    opacity: var(--water-streak-o);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  .wood-streaks line { stroke-dasharray: 18 14; animation: fall .8s linear infinite; }
+  .wood-ripples { fill: none; stroke: var(--water-streak); opacity: var(--water-streak-o); stroke-width: 2; }
+  .wood-ripples ellipse,
+  .wood-mist circle {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .wood-ripples ellipse { opacity: 0; animation: ripple 2.4s ease-out infinite; }
+  .wood-mist circle { animation: mist 2.1s ease-in-out infinite; }
   .wood-fireflies { display: var(--wood-firefly); fill: #FEF3C7; }
   .wood-fireflies circle {
     opacity: 0;
@@ -283,6 +318,8 @@
   html { scroll-behavior: auto; }
   body::before { animation: none; }
   .wood-fireflies circle { animation: none; opacity: 0.85; }
+  .wood-streaks line, .wood-mist circle { animation: none; }
+  .wood-ripples ellipse { animation: none; opacity: 0.5; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

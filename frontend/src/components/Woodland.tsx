@@ -1,6 +1,6 @@
 // A soft woodland along the bottom of the screen, behind everything: far hills,
-// a row of oaks and pines, a near hill with a squirrel holding an acorn, and
-// fallen leaves. Night forest with fireflies in dark mode. Colours and layer
+// a row of oaks and pines, a waterfall into a pool, a near hill with a squirrel
+// holding an acorn, and fallen leaves. Night forest with fireflies in dark mode. Colours and layer
 // opacities are the --wood-* tokens in index.css.
 //
 // The scene is drawn on a 1440×240 grid, then stretched up into a taller canvas
@@ -28,17 +28,16 @@ const BACK: Tree[] = [
   [820, 160, 0.6, 'pine'],
   [930, 172, 0.75, 'pine'],
   [1110, 180, 0.9, 'oak'],
-  [1250, 174, 0.65, 'pine'],
   [1380, 170, 0.8, 'oak'],
 ]
 const MID: Tree[] = [
   [200, 202, 1.3, 'oak'],
   [600, 212, 1.1, 'pine'],
-  [1200, 208, 1.4, 'oak'],
+  [1060, 210, 1.4, 'oak'],
 ]
 const NEAR: Tree[] = [
   [70, 234, 2.4, 'oak'],
-  [1380, 234, 2.2, 'oak'],
+  [1410, 234, 2.2, 'oak'],
 ]
 
 // [x, y, rotation]
@@ -56,8 +55,8 @@ const FIREFLIES: [number, number, number, number][] = [
   [1290, 150, 5, 3], [540, 180, 7, 5], [1060, 185, 6, 4.5], [250, 175, 8, 6],
 ]
 
-const H = 560
-const K = 2
+const H = 640
+const K = 2.5
 /** Maps a height on the 1440×240 grid onto the taller canvas, keeping the ground at the bottom. */
 const Y = (y: number) => H - (240 - y) * K
 const HILL = `translate(0 ${H - 240 * K}) scale(1 ${K})`
@@ -88,6 +87,14 @@ function TreeShape({ tree: [x, b, size, kind] }: { tree: Tree }) {
   )
 }
 
+// The waterfall, in canvas units: it pours off a rocky ledge (drawn with the
+// back hills) and lands in a pool on the middle hill.
+const FALL_TOP = Y(121)
+const FALL_FOOT = Y(203)
+const POOL_Y = Y(202)
+// [x, seconds]: each streak runs at its own speed so the water doesn't move in step.
+const STREAKS: [number, number][] = [[1223, 0.8], [1230, 0.65], [1237, 0.9], [1243, 0.72], [1250, 0.85]]
+
 /** Places a small drawing (made around 0,0 on the 240 grid) at x, y, K times bigger. */
 const at = (x: number, y: number, extra = '') => `translate(${x} ${Y(y)}) scale(${K})${extra}`
 
@@ -111,9 +118,45 @@ export function Woodland() {
           <path transform={HILL} d="M0 176 C140 150 260 150 400 165 C540 180 640 150 780 152 C940 155 1040 178 1200 168 C1320 160 1400 158 1440 162 V240 H0Z" />
         </g>
 
+        {/* The rocky ledge the waterfall pours off: in the middle hill's colour, so it stands out from the trees behind. */}
+        <g className="wood-mid">
+          <path transform={HILL} d="M1176 172 L1188 142 L1202 129 L1218 122 L1254 121 L1266 125 L1278 134 L1290 152 L1300 174Z" />
+        </g>
+        <g className="wood-water">
+          <path d={`M1218 ${FALL_TOP} L1254 ${FALL_TOP} L1262 ${FALL_FOOT} L1210 ${FALL_FOOT}Z`} />
+          <ellipse cx={1236} cy={FALL_TOP} rx={20} ry={4} />
+        </g>
+        <g className="wood-streaks">
+          {STREAKS.map(([x, dur], i) => (
+            <line
+              key={x}
+              x1={x}
+              y1={FALL_TOP}
+              x2={x + (x - 1236) * 0.25}
+              y2={FALL_FOOT}
+              style={{ animationDuration: `${dur}s`, animationDelay: `${-i * 0.2}s` }}
+            />
+          ))}
+        </g>
+
         <g className="wood-mid">
           {MID.map((t) => <TreeShape key={t[0]} tree={t} />)}
           <path transform={HILL} d="M0 200 C160 182 300 186 440 196 C600 208 720 186 880 188 C1040 190 1160 206 1300 198 C1380 194 1420 192 1440 194 V240 H0Z" />
+        </g>
+
+        {/* The pool at the foot of the waterfall, with mist and spreading ripples. */}
+        <g className="wood-water">
+          <ellipse cx={1236} cy={POOL_Y + 6} rx={52} ry={9} />
+          <g className="wood-mist">
+            {[1220, 1236, 1252].map((x, i) => (
+              <circle key={x} cx={x} cy={POOL_Y - 2} r={11} style={{ animationDelay: `${-i * 0.7}s` }} />
+            ))}
+          </g>
+        </g>
+        <g className="wood-ripples">
+          {[0, 1.2].map((delay) => (
+            <ellipse key={delay} cx={1236} cy={POOL_Y + 6} rx={46} ry={7} style={{ animationDelay: `${delay}s` }} />
+          ))}
         </g>
 
         <g className="wood-near">
