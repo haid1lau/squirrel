@@ -61,3 +61,19 @@ Durations 150–300ms (except the scan progress). Respect prefers-reduced-motion
 - Make the Dashboard stat cards tappable, each opening the matching filtered list
 - Assistant: suggested-question chips
 - Check tap targets are at least 44pt (avatar, theme toggle, ⋯ buttons)
+
+## Bringing the design into the real app (started 2026-10-02)
+The real app is this folder (`server.py` + React in `frontend/`), served at http://127.0.0.1:8000. The design export is `design/Squirrel.html`.
+
+**Step 1: the look. Done** (commit `636b42c`; the snapshot from before any UI change is `9f88c7d`)
+- The design's light and dark colours, a soft background glow, and frosted-glass cards and header
+- Dashboard hero panel ("Alex's benefits") with the large heading
+- The squirrel illustration for each category on every benefit row ("Other" gets a gift icon)
+- Brighter progress bars; on phones, the days-left badge sits under the name
+
+**Step 2: features. Not started.** These need backend changes:
+- A "used" state with a used date (Mark as used, Undo, the Used section, "Used this month · resets …")
+- A main action for each type: Mark as used, Show or Copy code, Log a use for credit balances, Update balance for points, a renewal reminder for subscriptions
+- The ⋯ menu for Edit and Remove instead of two buttons on every card
+- Stamp cards are a new type; decide whether you want them
+- Later: the scan progress, the 3D header acorn, falling acorns
