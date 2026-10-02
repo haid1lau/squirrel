@@ -4,6 +4,7 @@ import { KpiRow } from '../components/KpiRow'
 import { ReviewQueue } from '../components/ReviewQueue'
 import type { Benefit, User } from '../lib/api'
 import { formatToday } from '../lib/format'
+import { isArchived } from '../lib/usage'
 
 interface DashboardPageProps {
   user: User
@@ -18,8 +19,11 @@ export function DashboardPage({ user, benefits, error, onRetry, onConfirmed, onD
   // Derived during render rather than stored, so it can never go stale.
   const { tracked, review, expiringSoon, anyWithinWeek } = useMemo(() => {
     if (!benefits) return { tracked: null, review: null, expiringSoon: null, anyWithinWeek: false }
-    const tracked = benefits.filter((b) => !b.needs_review)
-    const soon = tracked.filter((b) => b.days_until_expiry != null && b.days_until_expiry >= 0 && b.days_until_expiry <= 30)
+    // Used-up benefits aren't tracked any more; a used-up card credit still shows until it resets.
+    const tracked = benefits.filter((b) => !b.needs_review && !isArchived(b))
+    const soon = tracked.filter(
+      (b) => !b.used_on && b.days_until_expiry != null && b.days_until_expiry >= 0 && b.days_until_expiry <= 30,
+    )
     return {
       tracked,
       review: benefits.filter((b) => b.needs_review),
@@ -51,7 +55,13 @@ export function DashboardPage({ user, benefits, error, onRetry, onConfirmed, onD
           needsReview={review?.length ?? null}
         />
 
-        <ExpiringList benefits={tracked} error={error} onRetry={onRetry} />
+        <ExpiringList
+          benefits={tracked}
+          error={error}
+          onRetry={onRetry}
+          onUpdated={onConfirmed}
+          onRemoved={onDismissed}
+        />
       </section>
 
       <ReviewQueue benefits={review} onConfirmed={onConfirmed} onDismissed={onDismissed} />

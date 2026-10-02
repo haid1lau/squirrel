@@ -59,6 +59,19 @@ def to_benefit(record: dict) -> ExtractedBenefit:
     return ExtractedBenefit(**{k: v for k, v in record.items() if k in _BENEFIT_FIELDS})
 
 
+def credit_total(record: dict) -> Optional[float]:
+    """A card credit's dollar amount for this period ("$15 ($35 in December)" gives 15), else None."""
+    if record.get("source") != "card":
+        return None
+    value = record.get("value") or ""
+    # "$15 ($35 in December)": the December period gets the larger amount.
+    december = re.search(r"\$(\d+(?:\.\d+)?) in December", value)
+    if december and (record.get("expiry_date") or "")[5:7] == "12":
+        return float(december.group(1))
+    m = re.search(r"\$(\d+(?:\.\d+)?)", value)
+    return float(m.group(1)) if m else None
+
+
 def with_days(record: dict) -> dict:
     days = None
     if record.get("expiry_date"):
@@ -66,7 +79,20 @@ def with_days(record: dict) -> dict:
             days = (date.fromisoformat(record["expiry_date"]) - date.today()).days
         except ValueError:
             pass
-    return {**record, "days_until_expiry": days}
+    return {**record, "days_until_expiry": days, "credit_total": credit_total(record)}
+
+
+def parse_points(value) -> Optional[int]:
+    """A points balance as typed ("12,500"), or None when empty. Raises ValueError with a message."""
+    if value in (None, ""):
+        return None
+    try:
+        points = int(str(value).replace(",", "").strip())
+    except ValueError:
+        raise ValueError("Enter points as a whole number, like 12500.") from None
+    if not 0 <= points <= 10_000_000_000:
+        raise ValueError("Enter a points balance between 0 and 10 billion.")
+    return points
 
 
 def user_benefits(user_id: str) -> list[dict]:
@@ -209,7 +235,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, [with_days(r) for r in user_benefits(user["id"])])
         elif path == "/api/digest":
             if user := self._require_user():
-                benefits = [to_benefit(r) for r in user_benefits(user["id"])]
+                benefits = [to_benefit(r) for r in user_benefits(user["id"]) if not r.get("used_on")]
                 ok, digest = self._call_ai(build_weekly_digest, benefits)
                 if ok:
                     self._send_json(HTTPStatus.OK, digest)
@@ -319,6 +345,8 @@ class Handler(BaseHTTPRequestHandler):
             self._review(user, m.group(1), m.group(2), data)
         elif m := re.fullmatch(r"/api/benefits/([0-9a-f]{12})/update", path):
             self._update_benefit(user, m.group(1), data)
+        elif m := re.fullmatch(r"/api/benefits/([0-9a-f]{12})/quick", path):
+            self._quick_update(user, m.group(1), data)
         else:
             self._error(HTTPStatus.NOT_FOUND, "not found")
 
@@ -460,7 +488,7 @@ class Handler(BaseHTTPRequestHandler):
         if not question:
             self._error(HTTPStatus.BAD_REQUEST, "Type a question first.")
             return
-        benefits = [to_benefit(r) for r in user_benefits(user["id"])]
+        benefits = [to_benefit(r) for r in user_benefits(user["id"]) if not r.get("used_on")]
         ok, answer = self._call_ai(ask_about_benefits, question, benefits)
         if ok:
             with db.connect() as conn:
@@ -528,16 +556,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Pick a type from the list.")
             if fields_["category"] not in CATEGORIES:
                 raise ValueError("Pick a category from the list.")
-            points = data.get("points")
-            if points in (None, ""):
-                fields_["points"] = None
-            else:
-                try:
-                    fields_["points"] = int(str(points).replace(",", "").strip())
-                except ValueError:
-                    raise ValueError("Enter points as a whole number, like 12500.") from None
-                if not 0 <= fields_["points"] <= 10_000_000_000:
-                    raise ValueError("Enter a points balance between 0 and 10 billion.")
+            fields_["points"] = parse_points(data.get("points"))
             if fields_["expiry_date"]:
                 try:
                     date.fromisoformat(fields_["expiry_date"])
@@ -586,6 +605,48 @@ class Handler(BaseHTTPRequestHandler):
                     expiry_reasoning="Set by you." if expiry else "You removed the expiry date.",
                 )
             record.update(fields_, needs_review=False, review_reason=None)
+            stored = {k: v for k, v in record.items() if k not in ("id", "source")}
+            db.update_benefit_data(conn, user["id"], benefit_id, stored)
+        self._send_json(HTTPStatus.OK, with_days(record))
+
+    def _quick_update(self, user: dict, benefit_id: str, data: dict) -> None:
+        """
+        One-tap changes from a benefit's card, without the full edit form. Any of:
+        used (true/false), used_amount (card credits: dollars spent this period),
+        points (a new balance) and reminder. Undo sends the old values back.
+        """
+        with db.connect() as conn:
+            record = db.get_benefit(conn, user["id"], benefit_id)
+            if record is None:
+                self._error(HTTPStatus.NOT_FOUND, "That benefit no longer exists.")
+                return
+            total = credit_total(record)
+            try:
+                if "used" in data:
+                    if not isinstance(data["used"], bool):
+                        raise ValueError("used must be true or false.")
+                    if data["used"]:
+                        record.update(used_on=date.today().isoformat(), used_amount=total)
+                    else:
+                        record.update(used_on=None, used_amount=None)
+                if "used_amount" in data:
+                    amount = data["used_amount"]
+                    if total is None:
+                        raise ValueError("Only card credits have a balance to spend.")
+                    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+                        raise ValueError("Enter an amount, like 12.50.")
+                    if not 0 <= amount <= total:
+                        raise ValueError(f"Enter an amount between $0 and ${total:g}.")
+                    amount = round(float(amount), 2)
+                    record.update(used_amount=amount or None,
+                                  used_on=date.today().isoformat() if amount >= total else None)
+                if "points" in data:
+                    record["points"] = parse_points(data["points"])
+                if "reminder" in data:
+                    record["reminder"] = reminders.parse_reminder(data["reminder"])
+            except ValueError as e:
+                self._error(HTTPStatus.BAD_REQUEST, str(e))
+                return
             stored = {k: v for k, v in record.items() if k not in ("id", "source")}
             db.update_benefit_data(conn, user["id"], benefit_id, stored)
         self._send_json(HTTPStatus.OK, with_days(record))

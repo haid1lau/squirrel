@@ -1,5 +1,6 @@
-import { ChevronDown, CircleCheck, Inbox, ListFilter, Pencil, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, CircleCheck, Inbox, ListFilter, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
+import { BenefitActions } from '../components/BenefitActions'
 import { BenefitRow } from '../components/BenefitRow'
 import { EditBenefitForm } from '../components/EditBenefitForm'
 import { Link } from '../components/Link'
@@ -7,13 +8,13 @@ import { Button } from '../components/ui/Button'
 import { Card, CardHeader, CountChip } from '../components/ui/Card'
 import { Message } from '../components/ui/Message'
 import { Skeleton } from '../components/ui/Skeleton'
-import { useArmedAction } from '../hooks/useArmedAction'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { api, CATEGORIES, errorMessage, TYPES, type Benefit } from '../lib/api'
 import { cn } from '../lib/cn'
-import { capitalize } from '../lib/format'
+import { capitalize, formatDate } from '../lib/format'
 import { fieldClass } from '../lib/styles'
 import { useToast } from '../lib/toast'
+import { isArchived } from '../lib/usage'
 
 const STATUSES = {
   all: 'Any status',
@@ -76,59 +77,6 @@ function applyFilters(benefits: Benefit[], f: Filters) {
     })
 }
 
-interface RowActionsProps {
-  benefit: Benefit
-  onEdit: () => void
-  onRemoved: (id: string) => void
-}
-
-function RowActions({ benefit, onEdit, onRemoved }: RowActionsProps) {
-  const toast = useToast()
-  const [armed, click, reset] = useArmedAction()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const name = benefit.benefit_name || 'Untitled benefit'
-  // A used card credit only disappears until it resets; other benefits are gone for good.
-  const isCard = benefit.source === 'card'
-
-  async function remove() {
-    if (!click()) return
-    setBusy(true)
-    setError(null)
-    try {
-      await api.dismiss(benefit.id)
-      onRemoved(benefit.id)
-      toast('info', isCard ? `Marked “${name}” as used. It comes back when the credit resets.` : `Removed “${name}”.`)
-    } catch (e) {
-      setError(errorMessage(e))
-      setBusy(false)
-      reset()
-    }
-  }
-
-  return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap gap-2">
-        <Button icon={<Pencil className="size-4" aria-hidden />} onClick={onEdit}>
-          Edit<span className="sr-only"> {name}</span>
-        </Button>
-        <Button
-          variant="danger"
-          icon={isCard ? <CircleCheck className="size-4" aria-hidden /> : <Trash2 className="size-4" aria-hidden />}
-          loading={busy}
-          loadingLabel={isCard ? 'Saving…' : 'Removing…'}
-          onClick={remove}
-          className={armed ? 'border-danger bg-danger-soft' : undefined}
-        >
-          {armed ? 'Click again to confirm' : isCard ? 'Mark as used' : 'Remove'}
-          <span className="sr-only"> {name}</span>
-        </Button>
-      </div>
-      {error ? <Message tone="error">{error}</Message> : null}
-    </div>
-  )
-}
-
 interface BenefitsPageProps {
   benefits: Benefit[] | null
   error: string | null
@@ -153,7 +101,21 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
     },
   })
 
-  const shown = useMemo(() => (benefits ? applyFilters(benefits, filters) : null), [benefits, filters])
+  // Used-up benefits leave the main list for the Used section; the same filters apply to both.
+  const current = useMemo(() => benefits?.filter((b) => !isArchived(b)) ?? null, [benefits])
+  const used = useMemo(() => benefits?.filter(isArchived) ?? [], [benefits])
+  const shown = useMemo(() => (current ? applyFilters(current, filters) : null), [current, filters])
+  const usedShown = useMemo(() => applyFilters(used, filters), [used, filters])
+  const [usedOpen, setUsedOpen] = useState(false)
+
+  async function restore(b: Benefit) {
+    try {
+      onUpdated(await api.quickUpdate(b.id, { used: false }))
+      toast('success', `Moved “${b.benefit_name}” back to your benefits.`)
+    } catch (e) {
+      toast('error', `Couldn’t restore it: ${errorMessage(e)}`)
+    }
+  }
   const activeFilters = Object.entries(filters).filter(
     ([k, v]) => k !== 'sort' && v !== NO_FILTERS[k as keyof Filters],
   ).length
@@ -323,10 +285,10 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
           title="Your benefits"
           titleId="list-title"
           action={
-            shown && benefits ? (
+            shown && current ? (
               <CountChip>
                 <span aria-live="polite">
-                  {filtered ? `${shown.length} of ${benefits.length}` : `${benefits.length} total`}
+                  {filtered ? `${shown.length} of ${current.length}` : `${current.length} total`}
                 </span>
               </CountChip>
             ) : null
@@ -341,7 +303,7 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
               </Button>
             </div>
           </div>
-        ) : !shown || !benefits ? (
+        ) : !shown || !current ? (
           <ul aria-busy="true" aria-label="Loading benefits" className="divide-y divide-line">
             {['w-3/5', 'w-2/5', 'w-1/2'].map((width) => (
               <li key={width} className="grid gap-2 px-5 py-5">
@@ -350,7 +312,7 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
               </li>
             ))}
           </ul>
-        ) : benefits.length === 0 ? (
+        ) : current.length === 0 && used.length === 0 ? (
           <div className="grid justify-items-center gap-2 px-5 py-10 text-center text-ink-muted">
             <Inbox className="size-7" aria-hidden />
             <p className="font-semibold text-ink">Nothing tracked yet</p>
@@ -358,6 +320,12 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
             <Link href="/" className="mt-1 font-semibold text-primary-text underline-offset-4 hover:underline">
               Go to the dashboard
             </Link>
+          </div>
+        ) : current.length === 0 ? (
+          <div className="grid justify-items-center gap-2 px-5 py-10 text-center text-ink-muted">
+            <CircleCheck className="size-7 text-ok" aria-hidden />
+            <p className="font-semibold text-ink">All used</p>
+            <p>Everything you tracked is in the Used list below.</p>
           </div>
         ) : shown.length === 0 ? (
           <div className="grid justify-items-center gap-3 px-5 py-10 text-center text-ink-muted">
@@ -381,12 +349,52 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
                 />
               ) : (
                 <BenefitRow key={b.id} benefit={b}>
-                  <RowActions benefit={b} onEdit={() => setEditing(b.id)} onRemoved={onRemoved} />
+                  <BenefitActions
+                    benefit={b}
+                    onEdit={() => setEditing(b.id)}
+                    onUpdated={onUpdated}
+                    onRemoved={onRemoved}
+                  />
                 </BenefitRow>
               ),
             )}
           </ul>
         )}
+        {usedShown.length > 0 ? (
+          <div className="border-t border-line">
+            <h3>
+              <button
+                type="button"
+                aria-expanded={usedOpen}
+                aria-controls="used-list"
+                onClick={() => setUsedOpen((o) => !o)}
+                className="flex min-h-11 w-full cursor-pointer items-center gap-2.5 px-5 py-3 text-left font-semibold transition-colors duration-150 hover:bg-surface-2/60"
+              >
+                <ChevronDown
+                  className={cn('size-4 text-ink-muted transition-transform duration-200', !usedOpen && '-rotate-90')}
+                  aria-hidden
+                />
+                Used
+                <CountChip>{usedShown.length}</CountChip>
+              </button>
+            </h3>
+            <ul id="used-list" hidden={!usedOpen} className="divide-y divide-line">
+              {usedShown.map((b) => (
+                <li key={b.id} className="flex items-center gap-3 px-5 py-3 text-ink-muted">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ink line-through decoration-ink-muted/50">{b.benefit_name}</p>
+                    <p className="text-sm">
+                      {b.provider ? `${b.provider} · ` : ''}Used {b.used_on ? formatDate(b.used_on) : ''}
+                    </p>
+                  </div>
+                  <Button icon={<RotateCcw className="size-4" aria-hidden />} onClick={() => restore(b)}>
+                    Restore<span className="sr-only"> {b.benefit_name}</span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Card>
     </div>
   )

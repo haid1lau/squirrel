@@ -1,6 +1,10 @@
 import { ArrowRight, Clock, Inbox, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 import type { Benefit } from '../lib/api'
+import { useToast } from '../lib/toast'
+import { BenefitActions } from './BenefitActions'
 import { BenefitRow } from './BenefitRow'
+import { EditBenefitForm } from './EditBenefitForm'
 import { Link } from './Link'
 import { Button } from './ui/Button'
 import { Card, CardHeader, CountChip } from './ui/Card'
@@ -11,13 +15,20 @@ interface ExpiringListProps {
   benefits: Benefit[] | null
   error: string | null
   onRetry: () => void
+  onUpdated: (benefit: Benefit) => void
+  onRemoved: (id: string) => void
   /** How many rows to show; the rest are on the All benefits page. */
   limit?: number
 }
 
-export function ExpiringList({ benefits, error, onRetry, limit = 5 }: ExpiringListProps) {
+export function ExpiringList({ benefits, error, onRetry, onUpdated, onRemoved, limit = 5 }: ExpiringListProps) {
+  const toast = useToast()
+  const [editing, setEditing] = useState<string | null>(null)
+  // Soonest first; a used-up card credit goes to the end until it resets.
   const sorted = benefits?.toSorted(
-    (a, b) => (a.days_until_expiry ?? Infinity) - (b.days_until_expiry ?? Infinity),
+    (a, b) =>
+      Number(Boolean(a.used_on)) - Number(Boolean(b.used_on)) ||
+      (a.days_until_expiry ?? Infinity) - (b.days_until_expiry ?? Infinity),
   )
 
   return (
@@ -58,9 +69,29 @@ export function ExpiringList({ benefits, error, onRetry, limit = 5 }: ExpiringLi
       ) : (
         <>
           <ul className="divide-y divide-line">
-            {sorted.slice(0, limit).map((b) => (
-              <BenefitRow key={b.id} benefit={b} />
-            ))}
+            {sorted.slice(0, limit).map((b) =>
+              editing === b.id ? (
+                <EditBenefitForm
+                  key={b.id}
+                  benefit={b}
+                  onCancel={() => setEditing(null)}
+                  onSaved={(saved) => {
+                    onUpdated(saved)
+                    setEditing(null)
+                    toast('success', `Saved “${saved.benefit_name}”.`)
+                  }}
+                />
+              ) : (
+                <BenefitRow key={b.id} benefit={b}>
+                  <BenefitActions
+                    benefit={b}
+                    onEdit={() => setEditing(b.id)}
+                    onUpdated={onUpdated}
+                    onRemoved={onRemoved}
+                  />
+                </BenefitRow>
+              ),
+            )}
           </ul>
           <div className="border-t border-line px-5 py-3">
             <Link

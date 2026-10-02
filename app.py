@@ -292,11 +292,14 @@ class ExtractedBenefit:
     reminder: Union[int, str, None] = None  # set by the user: None (their default), "off" or days before expiry
     needs_review: bool = False  # set by validate(), not by the model
     review_reason: Optional[str] = None  # set by validate(), not by the model
+    used_on: Optional[str] = None  # set by the user: the date they used it up (YYYY-MM-DD)
+    used_amount: Optional[float] = None  # set by the user: card credits only, how much of this period's credit is spent
 
     @classmethod
     def from_model_output(cls, data: dict) -> "ExtractedBenefit":
-        # Only accept schema fields; never let the model set needs_review, points or reminder.
-        allowed = {f.name for f in fields(cls)} - {"needs_review", "review_reason", "points", "reminder"}
+        # Only accept schema fields; never let the model set review, points, reminder or usage fields.
+        allowed = {f.name for f in fields(cls)} - {
+            "needs_review", "review_reason", "points", "reminder", "used_on", "used_amount"}
         return cls(**{k: v for k, v in data.items() if k in allowed})
 
 

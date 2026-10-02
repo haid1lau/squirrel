@@ -98,9 +98,10 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | GET | `/api/auth/google/start?purpose=login\|connect` | Browser redirect to Google |
 | GET | `/api/auth/google/callback` | Google redirects back here |
 | GET | `/api/benefits` | User's active benefits (card perks refreshed for the current period) |
-| POST | `/api/benefits/<id>/approve`, `/dismiss` | Review queue. Dismissed items are kept hidden so scans don't re-add them. `dismiss` is also "Remove" (Gmail) and "Mark as used" (card perk, hidden until it resets). |
+| POST | `/api/benefits/<id>/approve`, `/dismiss` | Review queue. Dismissed items are kept hidden so scans don't re-add them. `dismiss` is also "Remove", and "Hide until it resets" for card perks. |
 | POST | `/api/benefits` | Add a benefit by hand (`source: manual`). Same fields and checks as `update`, including an optional whole-number `points` balance instead of `value`. |
 | POST | `/api/benefits/<id>/update` | Edit name, provider, category, value, expiry date, terms. Also clears the review flag. |
+| POST | `/api/benefits/<id>/quick` | One-tap changes from a benefit's card, any of: `used` (true/false), `used_amount` (card credits: dollars spent this period, 0 to the credit's amount), `points`, `reminder`. Undo sends the old values back. |
 | GET | `/api/gmail/status` | Connection + latest scan progress |
 | POST | `/api/gmail/scan` | Starts a background scan (**calls OpenAI**) |
 | POST | `/api/gmail/disconnect` | Revokes Google access and deletes the stored token |
@@ -288,6 +289,22 @@ Replaced "paste an email" with connected sources:
   dashboard links to it.
 - **All Benefits:** "Search and filter" is collapsed until its header is clicked (or "/" is pressed, which also
   focuses the search box). Filters keep applying while it's closed, and the header shows "1 filter on" etc.
+
+### 15. The Claude Design look, and using benefits (2 October 2026)
+
+- **Look:** restyled to match the Claude Design prototype (`design/Squirrel.html`): frosted-glass cards and header,
+  a soft background glow, the design's light and dark colours, a hero panel on the dashboard and a squirrel
+  illustration per category (`CategoryArt.tsx`, drawings in `src/assets/category-scenes.svg`).
+- **Using benefits:** each benefit has a main button by kind (`lib/usage.ts`): vouchers and other one-time
+  benefits get **Mark as used**, which moves them to a **Used** section on All Benefits (with Restore); card
+  credits with a dollar amount get **Log a use** and a "$3 of $15 left" balance, and stay listed as
+  "Used up · resets …" when spent; points balances get **Update balance**; subscriptions get a
+  **Remind me before renewal** switch. Every change shows a toast with **Undo**.
+- New saved fields `used_on` and `used_amount` (never set by the model). Used benefits get no reminders and are
+  left out of the digest and the Assistant. `credit_total` is worked out from a card perk's value; Uber Cash's
+  December period uses the $35.
+- **Edit and Remove** moved into a ⋯ menu (`ui/MoreMenu.tsx`), drawn on `<body>` so cards can't cover it.
+- Stamp cards from the design were skipped on purpose.
 
 ## Known gaps and limitations
 

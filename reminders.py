@@ -151,7 +151,7 @@ def due(benefits: list[dict], settings: dict, sent: set[tuple[str, str]], today:
     """The benefits to remind about today, soonest expiry first."""
     out = []
     for b in benefits:
-        if b.get("needs_review") or not b.get("expiry_date"):
+        if b.get("needs_review") or b.get("used_on") or not b.get("expiry_date"):
             continue
         lead = lead_days(b, settings)
         if lead is None or (b["id"], b["expiry_date"]) in sent:

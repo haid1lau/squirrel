@@ -71,9 +71,12 @@ The real app is this folder (`server.py` + React in `frontend/`), served at http
 - The squirrel illustration for each category on every benefit row ("Other" gets a gift icon)
 - Brighter progress bars; on phones, the days-left badge sits under the name
 
-**Step 2: features. Not started.** These need backend changes:
-- A "used" state with a used date (Mark as used, Undo, the Used section, "Used this month · resets …")
-- A main action for each type: Mark as used, Show or Copy code, Log a use for credit balances, Update balance for points, a renewal reminder for subscriptions
-- The ⋯ menu for Edit and Remove instead of two buttons on every card
-- Stamp cards are a new type; decide whether you want them
-- Later: the scan progress, the 3D header acorn, falling acorns
+**Step 2: features. Done** (see PROGRESS.md section 15)
+- Used state with Undo, a Used section with Restore (it follows the search and filters)
+- Main action by kind: Mark as used, Log a use with "$3 of $15 left", Update balance, renewal reminder switch
+- ⋯ menu for Edit and Remove, drawn above every card
+- Stamp cards: skipped (decision 2026-10-02)
+
+**Still to bring over**
+- Show or Copy code: the app doesn't store voucher codes yet, so the email extraction would need a `code` field
+- The scan progress animation, the 3D header acorn and falling acorns, the "All caught up" squirrel

@@ -35,7 +35,21 @@ export interface Benefit {
   source_account?: string
   needs_review: boolean
   review_reason: string | null
+  /** The date the user used it up (YYYY-MM-DD). */
+  used_on?: string | null
+  /** Card credits: dollars spent this period. */
+  used_amount?: number | null
+  /** Card credits: this period's dollar amount, worked out from value. Null for everything else. */
+  credit_total: number | null
   days_until_expiry: number | null
+}
+
+/** One-tap changes from a benefit's card (see _quick_update in server.py). Undo sends the old values. */
+export interface QuickChange {
+  used?: boolean
+  used_amount?: number
+  points?: number | string | null
+  reminder?: number | 'off' | null
 }
 
 export const TYPES = ['membership', 'subscription', 'voucher', 'other'] as const
@@ -225,6 +239,7 @@ export const api = {
   dismiss: (id: string) => request<{ ok: true }>(`/api/benefits/${id}/dismiss`, post({})),
   createBenefit: (fields: BenefitEdit) => request<Benefit>('/api/benefits', post(fields)),
   updateBenefit: (id: string, changes: BenefitEdit) => request<Benefit>(`/api/benefits/${id}/update`, post(changes)),
+  quickUpdate: (id: string, change: QuickChange) => request<Benefit>(`/api/benefits/${id}/quick`, post(change)),
   digest: () => request<Digest>('/api/digest'),
   ask: (question: string) => request<AskEntry>('/api/ask', post({ question })),
   askHistory: (signal?: AbortSignal) => request<AskEntry[]>('/api/ask/history', { signal }),

@@ -1,9 +1,11 @@
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '../lib/cn'
-import { ToastContext, type Toast, type ToastTone } from '../lib/toast'
+import { ToastContext, type ShowToast, type Toast, type ToastTone } from '../lib/toast'
 
 const AUTO_DISMISS_MS = 4000
+// Long enough to notice a mistake and reach the Undo button.
+const AUTO_DISMISS_WITH_ACTION_MS = 7000
 
 const toneStyle: Record<ToastTone, string> = {
   success: 'text-ok',
@@ -23,11 +25,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     timers.current.delete(id)
   }, [])
 
-  const show = useCallback(
-    (tone: ToastTone, message: string) => {
+  const show = useCallback<ShowToast>(
+    (tone, message, action) => {
       const id = nextId.current++
-      setToasts((curr) => [...curr.slice(-2), { id, tone, message }])
-      timers.current.set(id, window.setTimeout(() => dismiss(id), AUTO_DISMISS_MS))
+      setToasts((curr) => [...curr.slice(-2), { id, tone, message, action }])
+      timers.current.set(
+        id,
+        window.setTimeout(() => dismiss(id), action ? AUTO_DISMISS_WITH_ACTION_MS : AUTO_DISMISS_MS),
+      )
     },
     [dismiss],
   )
@@ -49,10 +54,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={t.id}
-              className="pointer-events-auto flex w-full max-w-sm animate-rise items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-sm shadow-lg shadow-slate-900/10"
+              className="pointer-events-auto flex w-full max-w-sm animate-rise items-center gap-3 glass rounded-xl px-4 py-3 text-sm"
             >
               <Icon className={cn('size-4 shrink-0', toneStyle[t.tone])} aria-hidden />
               <span className="flex-1">{t.message}</span>
+              {t.action ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    dismiss(t.id)
+                    t.action?.onClick()
+                  }}
+                  className="-my-1 min-h-9 cursor-pointer rounded-lg px-2.5 font-semibold text-primary-text transition-colors duration-150 hover:bg-primary-soft"
+                >
+                  {t.action.label}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => dismiss(t.id)}
