@@ -1,86 +1,45 @@
-# Squirrel: UI/UX review progress
+# Squirrel: UI/UX progress
 
 **App:** Squirrel, a benefits tracker for vouchers, memberships, card perks, credits, points and subscriptions
-**Design:** Claude Design project `b5107f8e-ccaa-4d8f-9529-bd4d99aaf944`, file `Squirrel.dc.html`
-**Link:** https://claude.ai/design/p/b5107f8e-ccaa-4d8f-9529-bd4d99aaf944?file=Squirrel.dc.html
+**Real app:** this folder (`server.py` + React in `frontend/`), at http://127.0.0.1:8000. Technical notes are in `PROGRESS.md` (section 15 covers this work).
+**Design:** Claude Design project `b5107f8e-ccaa-4d8f-9529-bd4d99aaf944`, file `Squirrel.dc.html` ([link](https://claude.ai/design/p/b5107f8e-ccaa-4d8f-9529-bd4d99aaf944?file=Squirrel.dc.html)). The export is in `design/Squirrel.html`.
 **Last updated:** 2026-10-02
 
-## How we work
-1. Claude reviews the design in the built-in browser pane, which needs you signed in to claude.ai.
-2. Claude writes a prompt; you paste it into Claude Design.
-3. Claude re-checks the result and lists what's done and what's still open.
+## Where things stand
+Everything from the Claude Design prototype, and every extra planned on top of it, is now in the real app. Stamp cards were left out on purpose.
 
-## Decisions made
-- **Falling acorns:** keep the current number (about 30). Don't reduce them. They play on each Mark as used and Log a use, and when the review queue is cleared, as in the prototype.
-- **Main action depends on benefit type:**
-  - Vouchers: Mark as used, plus Show code or Copy code
-  - Credits: Log a use, with balance and reset date
-  - Stamps: Add a stamp
-  - Points: Update balance
-  - Always-on memberships: How to use
-  - Subscriptions: a reminder toggle
-- **Recurring credits** stay in the list when used up ("Used this month · resets 1 Nov"). Only one-time benefits move to "Used".
-- **Edit form** reuses the Add form. It has "Found in" (Gmail, Card link, Manual) and "Program / card" fields, and credits have Amount plus Resets.
-- **Placeholder barcodes** are fine for the prototype. The three code-sheet variants are barcode, text code with Copy, and no code.
-- **Background:** a small 3D acorn in the Dashboard header only, with calm backgrounds on the list pages.
+| Step | What | Commit |
+|---|---|---|
+| 0 | Snapshot before any UI change (undo point) | `9f88c7d` |
+| 1 | The look: glass cards and header, colours, background glow, hero panel, category squirrels | `636b42c` |
+| 2 | Used state, Undo, Used section, a main action for each kind of benefit, ⋯ menu | `86359be` |
+| 3 | Voucher codes with Copy code | `f902a95` |
+| 4 | Animations: 3D header acorn, falling acorns, count-up, row collapse, fly to Benefits, badge pulse, sliding nav highlight, "All caught up" squirrel | `e2c4d7f` |
+| 5 | Scan inbox progress; falling acorns on every use | `423d25a` |
+| 6 | Assistant typing indicator and line-by-line answers | `d7b300b` |
 
-## Done ✅
-- Readability over the background (higher card opacity, acorn moved out from behind content)
-- Mark as used with Undo, Show code sheet, ⋯ menu for Edit and Remove
-- Consistent counts ("N active · N to review")
-- Review queue: date left empty, quick-pick chips, Suggested chip in the row, date field shown only after tapping Pick a date, Undo after Dismiss
-- Actions by benefit type, Log a use dialog with an over-balance error and "Use all", descriptions that update
-- Progress bars show balance used on credits
-- Copy code button for text-code vouchers (Companion fare, PawPantry)
-- ⋯ menu draws above other cards, opens upward near the bottom, and the whole row is tappable
-- Confirmed review items count as tracked
-- Header acorn fills the "Clayton's benefits" box with a small margin (checked 2026-10-02)
-- Counts are consistent: 17 benefits in total. Birthday drink and $5 off had only been marked used during testing, and both are now restored
-- Motion: stat cards count up and stagger in, used cards collapse, confirmed items fly to Benefits, "All caught up" squirrel, acorns render behind the toast and never rest on buttons, Reduce Motion respected
+## Decisions
+- **Falling acorns:** keep about 30. Don't suggest fewer. They play on every Mark as used and Log a use, and when the review queue is cleared, as in the prototype.
+- **Main action by kind:** vouchers and other one-time benefits get Mark as used, and Copy code if they have one. Card credits get Log a use with a "$3 of $15 left" balance. Points get Update balance. Subscriptions get a renewal reminder switch. Memberships have no main button.
+- **Card credits** stay in the list when used up ("Used up · resets 1 Nov"). One-time benefits move to the Used section, which has Restore.
+- **Codes** are saved from an email only if they appear in it word for word, so the AI can't invent one. They can also be typed in the Edit form.
+- **Stamp cards:** skipped.
+- **Reduce Motion:** the acorn stays still, there are no falling acorns, and other animations become fades.
 
-## Open ⏳
-1. **Small bug (optional):** the "Used" section ignores the search box. Searching "Birthday" still listed "$5 off $30 order" under Used. Prompt:
-   > On All Benefits, apply the same search and filters to the "Used" section as to the main list, and hide the Used section when nothing in it matches.
+## Not tested yet (needs real data)
+- A real Gmail scan and real Assistant answers: `OPENAI_API_KEY` in `.env` is still empty. The scan and typing animations were checked with faked responses only.
+- The "+1" flight from the review queue, the review-queue acorns and the "All caught up" squirrel. These need confirming or dismissing review items, which can't be undone in the demo.
+- "Update balance": both demo points benefits are still waiting for review.
 
-## Next (planned, not started)
-**Extra animations.** Paste this when ready:
+## Running it
+Start the server in your own terminal. A copy started from a Claude session stops after at most 2 hours.
+```bash
+cd "/Users/claytonlau/Documents/AI lodge/BenefitApp" && /opt/anaconda3/bin/python3 server.py
 ```
-Add a few small, purposeful animations (keep all existing ones, including the current number of falling acorns):
-1. Scan inbox: while scanning, show the squirrel digging with a progress line ("Checked 50 of 312 emails…") and finish with "Found 3 new benefits" that links to the review queue.
-2. Add a stamp: the new stamp presses in with a small bounce and the count ticks up; on the final stamp (e.g. 10 of 10), play the falling-acorn celebration.
-3. Assistant: show a typing indicator while answering, then reveal the answer line by line.
-4. Copy code: the button briefly morphs into a check mark for about 1s, alongside the "Copied" toast.
-Durations 150–300ms (except the scan progress). Respect prefers-reduced-motion: replace motion with simple fades.
-```
-**Not doing:** more celebrations, hover or idle card animations, page transitions, continuously pulsing badges.
+After frontend changes: `cd frontend && npm run build`. After backend changes: restart the server. The demo account is in `demo_seed.py`.
 
-**After that:** review the screens not yet covered in detail: Connections (Gmail, other email, credit cards / card perks) and the Assistant answers.
-
-## Backlog from the first review (not yet asked for)
-- Benefits page: replace the large filter panel with a search bar plus filter chips, and put Sort and Source in a sheet
-- Make the Dashboard stat cards tappable, each opening the matching filtered list
+## Ideas not yet asked for
+- All Benefits: a search bar with filter chips instead of the large filter panel
+- Dashboard stat cards that open the matching filtered list when tapped
 - Assistant: suggested-question chips
-- Check tap targets are at least 44pt (avatar, theme toggle, ⋯ buttons)
-
-## Bringing the design into the real app (started 2026-10-02)
-The real app is this folder (`server.py` + React in `frontend/`), served at http://127.0.0.1:8000. The design export is `design/Squirrel.html`.
-
-**Step 1: the look. Done** (commit `636b42c`; the snapshot from before any UI change is `9f88c7d`)
-- The design's light and dark colours, a soft background glow, and frosted-glass cards and header
-- Dashboard hero panel ("Alex's benefits") with the large heading
-- The squirrel illustration for each category on every benefit row ("Other" gets a gift icon)
-- Brighter progress bars; on phones, the days-left badge sits under the name
-
-**Step 2: features. Done** (see PROGRESS.md section 15)
-- Used state with Undo, a Used section with Restore (it follows the search and filters)
-- Main action by kind: Mark as used, Log a use with "$3 of $15 left", Update balance, renewal reminder switch
-- ⋯ menu for Edit and Remove, drawn above every card
-- Stamp cards: skipped (decision 2026-10-02)
-- Copy code: done. Codes come from emails (only if found word for word) or the Edit form
-
-**Still to bring over**
-- Nothing from the design. Animations done 2026-10-02 (see PROGRESS.md section 15).
-- Scan inbox progress: done 2026-10-02
-- Falling acorns: play on each Mark as used and Log a use, and when the review queue is cleared (matches the prototype; fixed 2026-10-02)
-- Assistant typing indicator and line-by-line answers: done 2026-10-02
-- Everything from the design and the planned extras is now in the real app
+- The acorn's look: three.js changed its lighting since the version the design used, so it's matched by eye. Adjust the size, colour or angle if it looks off.
