@@ -19,8 +19,8 @@ export function useReducedMotion() {
 }
 
 // --- Falling acorns ------------------------------------------------------------
-// Only for big wins: a card credit used up, or the review queue cleared.
-// AcornRain (mounted once in App) listens for this.
+// As in the Claude Design prototype: each Mark as used or Log a use, and
+// clearing the review queue. AcornRain (mounted once in App) listens for this.
 
 const CELEBRATE = 'squirrel:celebrate'
 

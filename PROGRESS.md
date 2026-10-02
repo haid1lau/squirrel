@@ -309,8 +309,11 @@ Replaced "paste an email" with connected sources:
   - A 3D acorn in the dashboard hero (`acorn/HeroAcorn.tsx`, model in `acorn/model.ts`, ported from three.js r149).
     It spins as you scroll, bobs, shakes when something expires within 3 days and settles when nothing needs
     review. three.js loads only on the dashboard, as a separate file.
-  - About 30 falling acorns (`acorn/AcornRain.tsx`, kept at 30 by the owner's choice) only for big wins: a card
-    credit used up, or the review queue cleared. Call `celebrate()` from `lib/motion.ts`.
+  - About 30 falling acorns (`acorn/AcornRain.tsx`, kept at 30 by the owner's choice), as in the prototype: on
+    each Mark as used and Log a use, and when the review queue is cleared. Call `celebrate()` from `lib/motion.ts`.
+  - Scanning an inbox shows the digging squirrel with "Checked 18 of 48 emails…" and an orange bar, then
+    "Found 3 new benefits" with links to the review queue (`/#review`) and All Benefits. Links with a `#section`
+    now scroll to that section.
   - Stat numbers count up; rows and stat cards slide in one after another; "Mark as used" shows a check and the
     row folds away; confirming a review item flies its name to the All Benefits link with "+1"; badges expiring
     within 3 days pulse once; the page links have a sliding highlight; an empty review queue shows the digging

@@ -5,7 +5,7 @@ const COUNT = 30 // the owner's choice: keep it at about 30
 const MAX_SECONDS = 3
 
 /**
- * Full-screen falling acorns for big wins (see celebrate() in lib/motion.ts), drawn
+ * Full-screen falling acorns when something is used (see celebrate() in lib/motion.ts), drawn
  * above the page but under toasts, so the Undo button stays visible.
  * Mount once. Nothing is drawn, and three.js isn't loaded, until the first celebration.
  */

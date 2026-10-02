@@ -49,6 +49,12 @@ export default function App({ user, session, notice, onSessionChange, onSignOut 
       firstRender.current = false
       return
     }
+    // A link like "/#review" goes to that section; any other page change starts at the top.
+    const section = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null
+    if (section) {
+      section.scrollIntoView()
+      return
+    }
     window.scrollTo(0, 0)
     document.querySelector<HTMLElement>('main h1')?.focus({ preventScroll: true })
   }, [page])

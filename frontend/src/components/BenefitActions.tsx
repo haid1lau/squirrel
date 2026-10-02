@@ -42,13 +42,14 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
     setError(null)
     try {
       const saved = await api.quickUpdate(benefit.id, change)
+      // As in the design: falling acorns each time something is used (Mark as used or Log a use),
+      // starting with the check mark. Not for undo, balances or reminders.
+      if (change.used === true || (change.used_amount ?? 0) > (benefit.used_amount ?? 0)) celebrate()
       if (leaving) {
         setFlash(true)
         if (!prefersReducedMotion()) await new Promise((r) => window.setTimeout(r, 450))
         await collapse(leaving)
       }
-      // A card credit just used up is a big win.
-      if (kind === 'credit' && saved.used_on && !benefit.used_on) celebrate()
       onUpdated(saved)
       setPanel(null)
       toast(

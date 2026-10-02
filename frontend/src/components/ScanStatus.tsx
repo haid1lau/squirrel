@@ -1,4 +1,7 @@
+import { ArrowRight } from 'lucide-react'
 import type { ScanStatus } from '../lib/api'
+import { DiggingSquirrel } from './DiggingSquirrel'
+import { Link } from './Link'
 import { Message } from './ui/Message'
 
 export const SCAN_POLL_MS = 1500
@@ -19,30 +22,66 @@ function scanSummary(s: ScanStatus) {
   return text
 }
 
-/** Progress bar while an inbox scan runs. */
+/** While an inbox scan runs: the squirrel digging, a progress line and a bar. */
 export function ScanProgress({ scan }: { scan: ScanStatus }) {
   if (scan.state !== 'running') return null
   const progress = scan.total ? Math.round(((scan.checked ?? 0) / scan.total) * 100) : null
   return (
-    <div className="grid gap-1.5">
-      <p className="text-sm text-ink-muted" aria-live="polite">
-        {scan.total == null
-          ? 'Searching your inbox…'
-          : `Read ${scan.checked ?? 0} of ${plural(scan.total, 'email')}…`}
-      </p>
-      <div
-        role="progressbar"
-        aria-label="Scan progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress ?? undefined}
-        className="h-1.5 overflow-hidden rounded-full bg-surface-2"
-      >
+    <div className="flex animate-rise items-center gap-3 rounded-xl bg-surface-2 p-3">
+      <DiggingSquirrel className="size-14" />
+      <div className="grid min-w-0 flex-1 gap-1.5">
+        <p className="text-sm font-semibold" aria-live="polite">
+          {scan.total == null
+            ? 'Searching your inbox…'
+            : `Checked ${scan.checked ?? 0} of ${plural(scan.total, 'email')}…`}
+        </p>
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-300"
-          style={{ width: `${progress ?? 5}%` }}
-        />
+          role="progressbar"
+          aria-label="Scan progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress ?? undefined}
+          className="h-1.5 overflow-hidden rounded-full bg-line"
+        >
+          <div
+            className="h-full rounded-full bg-cta transition-[width] duration-300"
+            style={{ width: `${progress ?? 5}%` }}
+          />
+        </div>
       </div>
+    </div>
+  )
+}
+
+/** "Found 3 new benefits", with links to where they went, then the details. */
+function ScanFound({ scan }: { scan: ScanStatus }) {
+  const added = scan.added ?? 0
+  const review = scan.needs_review ?? 0
+  const found = added + review
+  const linkClass =
+    'inline-flex min-h-11 items-center gap-1.5 font-semibold text-primary-text underline-offset-4 hover:underline'
+  return (
+    <div className="grid animate-rise gap-1 rounded-xl bg-ok-soft p-3 text-sm">
+      <p className="text-base font-semibold text-ink">
+        {found ? `Found ${plural(found, 'new benefit')}` : 'No new benefits this time'}
+      </p>
+      <p className="text-ink-muted">{scanSummary(scan)}</p>
+      {found ? (
+        <div className="flex flex-wrap gap-x-5">
+          {review ? (
+            <Link href="/#review" className={linkClass}>
+              Review {review === 1 ? 'it' : `${review}`} in the review queue
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          ) : null}
+          {added ? (
+            <Link href="/benefits" className={linkClass}>
+              See {added === 1 ? 'it' : 'them'} in All Benefits
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -59,7 +98,7 @@ export function ScanResult({ scan }: { scan: ScanStatus }) {
   return (
     <>
       {memberships}
-      {scan.state === 'done' ? <Message tone="success">{scanSummary(scan)}</Message> : null}
+      {scan.state === 'done' ? <ScanFound scan={scan} /> : null}
       {scan.state === 'error' && scan.message ? <Message tone="error">{scan.message}</Message> : null}
     </>
   )

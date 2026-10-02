@@ -11,7 +11,7 @@
 3. Claude re-checks the result and lists what's done and what's still open.
 
 ## Decisions made
-- **Falling acorns:** keep the current number (about 30). Don't reduce them. They play only for big wins: a credit, multi-use voucher or lounge visits fully used, or the review queue cleared.
+- **Falling acorns:** keep the current number (about 30). Don't reduce them. They play on each Mark as used and Log a use, and when the review queue is cleared, as in the prototype.
 - **Main action depends on benefit type:**
   - Vouchers: Mark as used, plus Show code or Copy code
   - Credits: Log a use, with balance and reset date
@@ -80,4 +80,6 @@ The real app is this folder (`server.py` + React in `frontend/`), served at http
 
 **Still to bring over**
 - Nothing from the design. Animations done 2026-10-02 (see PROGRESS.md section 15).
-- Not done yet, from the planned extras: scan inbox progress with the digging squirrel, Assistant typing indicator
+- Scan inbox progress: done 2026-10-02
+- Falling acorns: play on each Mark as used and Log a use, and when the review queue is cleared (matches the prototype; fixed 2026-10-02)
+- Not done yet, from the planned extras: Assistant typing indicator and line-by-line answers

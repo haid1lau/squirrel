@@ -22,7 +22,7 @@ function subscribe(listener: () => void) {
 }
 
 export function navigate(to: string) {
-  if (to === window.location.pathname + window.location.search) return
+  if (to === window.location.pathname + window.location.search + window.location.hash) return
   window.history.pushState(null, '', to)
   listeners.forEach((l) => l())
 }
