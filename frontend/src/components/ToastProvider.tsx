@@ -54,7 +54,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={t.id}
-              className="pointer-events-auto flex w-full max-w-sm animate-rise items-center gap-3 glass rounded-xl px-4 py-3 text-sm"
+              className="pointer-events-auto flex w-full max-w-sm animate-rise items-center gap-3 glass-float rounded-xl px-4 py-3 text-sm"
             >
               <Icon className={cn('size-4 shrink-0', toneStyle[t.tone])} aria-hidden />
               <span className="flex-1">{t.message}</span>

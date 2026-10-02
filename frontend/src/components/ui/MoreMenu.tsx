@@ -111,7 +111,7 @@ export function MoreMenu({ items, label }: { items: MoreMenuItem[]; label: strin
               aria-label={label}
               onKeyDown={onMenuKeyDown}
               style={{ position: 'fixed', width: MENU_WIDTH, ...pos, visibility: pos ? 'visible' : 'hidden' }}
-              className="glass z-40 grid animate-rise gap-0.5 rounded-xl p-1.5"
+              className="glass-float z-40 grid animate-rise gap-0.5 rounded-xl p-1.5"
             >
               {items.map((item, i) => (
                 <button

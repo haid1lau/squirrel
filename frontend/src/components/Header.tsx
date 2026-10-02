@@ -104,7 +104,7 @@ function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Pro
       {open ? (
         <div
           id={panelId}
-          className="absolute top-full right-0 z-30 mt-2 grid w-64 max-w-[calc(100vw-2rem)] animate-rise gap-1 rounded-xl border border-line bg-surface p-1.5 shadow-lg shadow-slate-900/10"
+          className="absolute top-full right-0 z-30 mt-2 grid w-64 max-w-[calc(100vw-2rem)] animate-rise gap-1 rounded-xl glass-float p-1.5"
         >
           <div className="px-2.5 py-2">
             <p className="text-xs text-ink-muted">Signed in as</p>
