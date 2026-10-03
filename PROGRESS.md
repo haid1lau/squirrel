@@ -354,6 +354,14 @@ Replaced "paste an email" with connected sources:
   fit the four page icons, the logo is hidden below 400px (Home is in the nav) and the current page's name shows
   from 460px. Checked from 320px to 639px: no nav or page overflow.
 
+### 19. The assistant reads every benefit (3 October 2026)
+
+- `ask_about_benefits` used to send OpenAI only the 8 benefits sharing the most words with the question, so a
+  question worded differently ("flights" vs "KrisFlyer") could miss the right one. It now sends all of a user's
+  unused benefits, up to `SEND_ALL_UP_TO` (300), as compact JSON with empty fields left out (about 115 tokens a
+  benefit; the demo account's 22 are ~2,500). Only past 300 does keyword matching pick which ones to send.
+  Embeddings and a vector database were considered and skipped: one person's benefits fit in a single prompt.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.

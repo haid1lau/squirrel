@@ -166,18 +166,23 @@ def _words(text: str) -> set:
     return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in _STOPWORDS}
 
 
+# Up to this many benefits, the assistant sees all of them: a few hundred
+# records fit easily in one prompt, and no search can drop the one that answers
+# the question. Only past it does keyword search pick which ones to send.
+SEND_ALL_UP_TO = 300
+
+
 def _retrieve_relevant_benefits(
-    question: str, benefits: List[ExtractedBenefit], max_results: int = 8
+    question: str, benefits: List[ExtractedBenefit], max_results: int = SEND_ALL_UP_TO
 ) -> List[ExtractedBenefit]:
     """
-    Simple keyword-overlap retrieval. A personal benefit tracker is a small
-    dataset (tens, not millions, of records) — a full vector DB is overkill
-    for the hackathon prototype, so this scores each record by how many
-    question words (minus stopwords, whole-word match) appear in its text
-    fields and returns the top matches. Swap in embeddings later if the
-    dataset grows large enough to need it — worth noting as a known
-    limitation in your README.
+    The benefits to answer from: all of them, up to max_results. Past that,
+    the ones sharing the most words with the question (minus stopwords,
+    whole-word match), so a keyword-free question still gets an answer.
     """
+    if len(benefits) <= max_results:
+        return benefits
+
     question_words = _words(question)
 
     def score(b: ExtractedBenefit) -> int:
@@ -186,13 +191,8 @@ def _retrieve_relevant_benefits(
         )
         return len(question_words & _words(text))
 
-    scored = [(score(b), b) for b in benefits]
-    scored.sort(key=lambda pair: pair[0], reverse=True)
-
-    relevant = [b for s, b in scored if s > 0][:max_results]
-    # Nothing scored above 0 — small dataset, so just hand over everything
-    # rather than return an empty context.
-    return relevant or benefits[:max_results]
+    # sorted() is stable, so benefits that tie keep their original order.
+    return sorted(benefits, key=score, reverse=True)[:max_results]
 
 
 ASSISTANT_SYSTEM_PROMPT = """\
@@ -214,8 +214,8 @@ def ask_about_benefits(
     question: str, benefits: List[ExtractedBenefit], today: Optional[date] = None
 ) -> str:
     """
-    Grounded Q&A: retrieves the user's own relevant records and answers only
-    from those — this is what keeps answers accurate to what the user
+    Grounded Q&A: answers only from the user's own records (all of them, up to
+    SEND_ALL_UP_TO) — this is what keeps answers accurate to what the user
     actually has, rather than the model's general knowledge.
     """
     if not benefits:
@@ -223,15 +223,17 @@ def ask_about_benefits(
 
     today = today or date.today()
     relevant = _retrieve_relevant_benefits(question, benefits)
+    # Compact JSON with empty fields left out keeps a few hundred records small.
     records = [
-        {**asdict(b), "days_until_expiry": _days_until(b.expiry_date, today)}
+        {k: v for k, v in {**asdict(b), "days_until_expiry": _days_until(b.expiry_date, today)}.items()
+         if v not in (None, "", [])}
         for b in relevant
     ]
 
     return call_text(
         ASSISTANT_SYSTEM_PROMPT,
         f"Today's date: {today.isoformat()}\n\n"
-        f"My tracked benefits:\n{json.dumps(records, indent=2)}\n\n"
+        f"My tracked benefits:\n{json.dumps(records, separators=(',', ':'))}\n\n"
         f"Question: {question}",
     )
 
