@@ -7,9 +7,25 @@
 //
 // Drawn on a 1440×640 canvas, anchored to the bottom. Wide screens show only the
 // bottom ~320 units, so everything that matters sits below y≈330.
+// Phones show the right-hand end instead of the middle (the gorge, waterfall
+// and squirrel), zoomed in so the scene fills more of its 40% strip.
+
+import { useSyncExternalStore } from 'react'
 
 const W = 1440
 const H = 640
+// On phones: from y=170 down, right-aligned.
+const PHONE_TOP = 170
+
+const phoneQuery = window.matchMedia('(max-width: 639px)')
+const usePhone = () =>
+  useSyncExternalStore(
+    (cb) => {
+      phoneQuery.addEventListener('change', cb)
+      return () => phoneQuery.removeEventListener('change', cb)
+    },
+    () => phoneQuery.matches,
+  )
 
 type Tree = [x: number, base: number, size: number, kind: 'oak' | 'pine']
 
@@ -161,9 +177,14 @@ const trees = (list: Tree[]) => list.map((t) => <TreeShape key={`${t[0]}-${t[1]}
 const at = (x: number, y: number, extra = '') => `translate(${x} ${y}) scale(2.5)${extra}`
 
 export function Woodland() {
+  const phone = usePhone()
   return (
     <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-1 h-[40vh]">
-      <svg className="size-full" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice">
+      <svg
+        className="size-full"
+        viewBox={phone ? `0 ${PHONE_TOP} ${W} ${H - PHONE_TOP}` : `0 0 ${W} ${H}`}
+        preserveAspectRatio={phone ? 'xMaxYMax slice' : 'xMidYMax slice'}
+      >
         <defs>
           <filter id="wood-fog" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="9" />
