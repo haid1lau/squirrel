@@ -28,15 +28,15 @@ const NEAR_HILL = 'M0 612 C200 600 360 603 520 610 C700 618 860 598 1040 603 C12
 // The gorge: two steep mountain flanks with the waterfall dropping between them
 // (after a photo of a waterfall in a misty ravine). The gap behind the water is
 // filled with distant, hazy mountain; the inner walls are in shadow.
-const GORGE_GAP = 'M1190 350 L1282 344 L1266 600 L1206 600Z'
-const LEFT_FLANK = 'M1020 600 L1040 540 L1066 500 L1090 462 L1114 428 L1138 396 L1160 368 L1178 346 L1192 338 L1202 356 L1210 392 L1215 432 L1219 480 L1222 600Z'
-const RIGHT_FLANK = 'M1250 600 L1252 480 L1256 436 L1262 396 L1270 362 L1282 340 L1296 332 L1312 344 L1334 370 L1358 400 L1384 436 L1410 478 L1440 520 L1440 600Z'
-const LEFT_WALL = 'M1192 338 L1202 356 L1210 392 L1215 432 L1219 480 L1222 600 L1196 600 L1198 480 L1196 430 L1194 390 L1190 356Z'
-const RIGHT_WALL = 'M1282 340 L1270 362 L1262 396 L1256 436 L1252 480 L1250 600 L1274 600 L1276 480 L1279 430 L1282 390 L1286 356Z'
+const GORGE_GAP = 'M1211 350 L1261 344 L1266 600 L1206 600Z'
+const LEFT_FLANK = 'M1020 600 L1045 540 L1074 500 L1102 462 L1128 428 L1155 396 L1179 368 L1199 346 L1214 338 L1222 356 L1224 392 L1223 432 L1221 480 L1216 600Z'
+const RIGHT_FLANK = 'M1256 600 L1253 480 L1251 436 L1250 396 L1250 362 L1260 340 L1274 332 L1291 344 L1315 370 L1341 400 L1370 436 L1400 478 L1440 520 L1440 600Z'
+const LEFT_WALL = 'M1214 338 L1222 356 L1224 392 L1223 432 L1221 480 L1216 600 L1194 600 L1204 480 L1210 430 L1212 390 L1210 356Z'
+const RIGHT_WALL = 'M1260 340 L1250 362 L1250 396 L1251 436 L1253 480 L1256 600 L1276 600 L1268 480 L1265 430 L1264 390 L1266 356Z'
 // Snow on the two summits either side of the gorge.
-const SUMMIT_SNOW = 'M1178 346 L1192 338 L1202 356 L1197 354 L1192 362 L1186 353 L1172 357Z M1282 340 L1296 332 L1312 344 L1318 352 L1306 350 L1298 358 L1290 349 L1276 352Z'
+const SUMMIT_SNOW = 'M1199 346 L1214 338 L1222 356 L1218 354 L1212 362 L1207 353 L1192 357Z M1260 340 L1274 332 L1291 344 L1297 352 L1285 350 L1278 358 L1269 349 L1255 352Z'
 // Cracks and ledges in the rock.
-const CRACKS = 'M1110 450 l16 24 l-4 20 M1070 520 l20 12 l6 24 M1150 410 l10 30 M1330 380 l-10 24 l4 20 M1380 450 l-16 18 l2 26 M1300 420 l6 34 M1410 500 l-12 20'
+const CRACKS = 'M1123 450 l16 24 l-4 20 M1077 520 l20 12 l6 24 M1166 410 l10 30 M1312 380 l-10 24 l4 20 M1367 450 l-16 18 l2 26 M1285 420 l6 34 M1402 500 l-12 20'
 
 /** Roughly where the far hill's top is at x, so its pines stand on it. */
 function farHillY(x: number) {
@@ -76,9 +76,9 @@ const BACK: Tree[] = [
 ]
 // Pines climbing both flanks of the gorge.
 const GORGE_PINES: Tree[] = [
-  [1048, 534, 1.2, 'pine'], [1072, 498, 1.15, 'pine'], [1096, 462, 1.05, 'pine'], [1120, 428, 0.95, 'pine'],
-  [1142, 398, 0.85, 'pine'], [1162, 372, 0.75, 'pine'], [1316, 352, 0.75, 'pine'], [1338, 378, 0.85, 'pine'],
-  [1360, 406, 0.95, 'pine'], [1386, 442, 1.05, 'pine'], [1410, 480, 1.15, 'pine'], [1432, 514, 1.2, 'pine'],
+  [1054, 534, 1.2, 'pine'], [1081, 498, 1.15, 'pine'], [1108, 462, 1.05, 'pine'], [1134, 428, 0.95, 'pine'],
+  [1159, 398, 0.85, 'pine'], [1181, 372, 0.75, 'pine'], [1295, 352, 0.75, 'pine'], [1319, 378, 0.85, 'pine'],
+  [1344, 406, 0.95, 'pine'], [1373, 442, 1.05, 'pine'], [1400, 480, 1.15, 'pine'], [1425, 514, 1.2, 'pine'],
 ]
 const MID: Tree[] = [
   [90, 556, 2.4, 'pine'],
@@ -187,7 +187,7 @@ export function Woodland() {
         {/* The gorge: hazy distance in the gap, fog drifting through it, then the two flanks. */}
         <path className="wood-mtn" d={GORGE_GAP} />
         <g className="wood-fog" filter="url(#wood-fog)">
-          <ellipse cx={1236} cy={352} rx={60} ry={18} />
+          <ellipse cx={1236} cy={352} rx={42} ry={16} />
           <ellipse cx={1240} cy={424} rx={36} ry={12} style={{ animationDelay: '-4s' }} />
         </g>
         <path className="wood-rock" d={LEFT_FLANK} />
