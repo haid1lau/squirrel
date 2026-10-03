@@ -202,7 +202,9 @@ function ConnectForm({ onConnected, onCancel }: { onConnected: (a: ImapAccount) 
         </p>
       </div>
       <details className="rounded-xl bg-surface-2 px-3.5 py-0.5 text-sm">
-        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">How do I get an app password?</summary>
+        <summary className="flex min-h-11 cursor-pointer items-center font-semibold">
+          How do I get an app password?
+        </summary>
         <ul className="grid gap-1.5 pb-3 text-ink-muted">
           {APP_PASSWORD_HELP.map((p) => (
             <li key={p.name}>
@@ -318,17 +320,7 @@ export function EmailAccountsPanel({ onScanFinished }: { onScanFinished: () => v
         ) : (
           <>
             {accounts.length === 0 ? (
-              <>
-                <p className="text-ink-muted">Connect Yahoo, iCloud, AOL or another email account.</p>
-                <ul className="grid list-disc gap-1 pl-5 text-sm text-ink-muted">
-                  <li>Squirrel only reads: it opens your inbox read-only and never marks email as read.</li>
-                  <li>Same rules as Gmail: last 6 months, only emails that mention vouchers, memberships or expiry.</li>
-                  <li>Those emails are sent to OpenAI’s API to pull out the benefit.</li>
-                  <li>Hotel and airline memberships are spotted from who emails you (sender and subject only).</li>
-                  <li>The app password is stored encrypted. Delete it at your provider any time to cut access.</li>
-                  <li>Outlook and Hotmail aren’t supported yet.</li>
-                </ul>
-              </>
+              <p className="text-ink-muted">Connect Yahoo, iCloud, AOL or another email account.</p>
             ) : (
               <ul className="divide-y divide-line">
                 {accounts.map((a) => (

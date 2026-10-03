@@ -348,6 +348,12 @@ Replaced "paste an email" with connected sources:
   tapped; then it shows as selectable text until the page is left. **Copy code** works without revealing it, and a
   failed copy reveals it so it can be selected by hand. Screen readers hear "Show the code for …" until revealed.
 
+### 18. Light/dark toggle on phones (3 October 2026)
+
+- The light/dark button now sits next to the account button on phones too (it was inside the account panel). To
+  fit the four page icons, the logo is hidden below 400px (Home is in the nav) and the current page's name shows
+  from 460px. Checked from 320px to 639px: no nav or page overflow.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.

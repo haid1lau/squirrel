@@ -101,13 +101,6 @@ export function GmailPanel({ googleEnabled, connection, onConnectionChange, onSc
             <p className="text-ink-muted">
               Connect Gmail and Squirrel finds membership, voucher and reward emails for you.
             </p>
-            <ul className="grid list-disc gap-1 pl-5 text-sm text-ink-muted">
-              <li>Read-only: Squirrel can’t send, delete or change email.</li>
-              <li>Only emails from the last 6 months that mention vouchers, memberships, credits or expiry are read.</li>
-              <li>Each of those is sent to OpenAI’s API to pull out the benefit and its expiry date.</li>
-              <li>Hotel and airline memberships are spotted from who emails you (sender and subject only, no AI).</li>
-              <li>Disconnect any time.</li>
-            </ul>
             <div>
               <Button
                 variant="primary"
@@ -152,7 +145,9 @@ export function GmailPanel({ googleEnabled, connection, onConnectionChange, onSc
                 {armed ? 'Click again to disconnect' : 'Disconnect'}
               </Button>
             </div>
-            <p className="text-xs text-ink-muted">Each scan reads up to 50 new emails, 5 at a time. A full scan can take a few minutes.</p>
+            <p className="text-xs text-ink-muted">
+              Each scan reads up to 50 new emails, 5 at a time. A full scan can take a few minutes.
+            </p>
           </>
         )}
 

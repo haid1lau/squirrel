@@ -24,7 +24,6 @@ const PAGE_ICONS: Record<string, LucideIcon> = {
   '/connections': Plug,
 }
 
-// On phones there's no room for the toggle in the header, so it sits in the account panel instead.
 function ThemeToggle() {
   const theme = useTheme()
   const next = theme === 'dark' ? 'light' : 'dark'
@@ -35,7 +34,8 @@ function ThemeToggle() {
       aria-label={label}
       title={label}
       onClick={() => setTheme(next)}
-      className="hidden size-11 cursor-pointer place-items-center rounded-xl border border-line bg-surface text-ink transition-colors duration-150 hover:bg-surface-2 sm:grid"
+      // Phones: borderless, like the account button beside it.
+      className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-xl text-ink-muted transition-colors duration-150 hover:bg-surface-2 hover:text-ink sm:border sm:border-line sm:bg-surface sm:text-ink"
     >
       {theme === 'dark' ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
     </button>
@@ -46,8 +46,6 @@ function ThemeToggle() {
 function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Promise<void> }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-  const theme = useTheme()
-  const nextTheme = theme === 'dark' ? 'light' : 'dark'
   const panelId = useId()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -115,14 +113,6 @@ function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Pro
           <div className="h-px bg-line" aria-hidden />
           <button
             type="button"
-            onClick={() => setTheme(nextTheme)}
-            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-surface-2 sm:hidden"
-          >
-            {theme === 'dark' ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
-            {nextTheme === 'dark' ? 'Dark mode' : 'Light mode'}
-          </button>
-          <button
-            type="button"
             aria-disabled={signingOut || undefined}
             onClick={async () => {
               if (signingOut) return
@@ -180,12 +170,19 @@ export function Header({ path, email, onSignOut }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-header backdrop-blur-2xl backdrop-saturate-150">
       <div className="mx-auto flex max-w-6xl items-center gap-1 px-3 py-2.5 min-[360px]:gap-2 min-[360px]:px-4 sm:gap-6 sm:px-6 lg:px-8">
+        {/* Left out on the narrowest phones to fit the nav; Home is in it. */}
         <Link
           href="/"
-          className="-mx-1 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2.5 rounded-lg px-1 font-bold tracking-tight"
+          className="-mx-1 hidden min-h-11 min-w-11 shrink-0 items-center min-[400px]:flex justify-center gap-2.5 rounded-lg px-1 font-bold tracking-tight"
           aria-label="Squirrel, go to the dashboard"
         >
-          <img src="/icon-192.png" alt="" width={36} height={36} className="size-9 rounded-[10px] shadow-[0_6px_18px_-6px_rgb(96_165_250/0.7)]" />
+          <img
+            src="/icon-192.png"
+            alt=""
+            width={36}
+            height={36}
+            className="size-9 rounded-[10px] shadow-[0_6px_18px_-6px_rgb(96_165_250/0.7)]"
+          />
           <span className="hidden sm:inline">Squirrel</span>
         </Link>
 
@@ -219,7 +216,7 @@ export function Header({ path, email, onSignOut }: HeaderProps) {
                   >
                     {/* Phones: icons, with the current page's name when there's room. */}
                     <PageIcon className="size-5 sm:hidden" aria-hidden />
-                    {path === p.path ? <span className="hidden min-[360px]:inline sm:hidden">{p.short}</span> : null}
+                    {path === p.path ? <span className="hidden min-[460px]:inline sm:hidden">{p.short}</span> : null}
                     <span className="hidden sm:inline">{p.label}</span>
                   </Link>
                 </li>
