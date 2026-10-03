@@ -179,7 +179,9 @@ const at = (x: number, y: number, extra = '') => `translate(${x} ${y}) scale(2.5
 export function Woodland() {
   const phone = usePhone()
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-1 h-[40vh]">
+    // 40% of the screen height, but at least 22% of its width: on ultrawide screens
+    // 40vh is too short for the drawing, which would lose its peaks along the top.
+    <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-1 h-[max(40vh,22vw)]">
       <svg
         className="size-full"
         viewBox={phone ? `0 ${PHONE_TOP} ${W} ${H - PHONE_TOP}` : `0 0 ${W} ${H}`}
