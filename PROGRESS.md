@@ -362,6 +362,19 @@ Replaced "paste an email" with connected sources:
   benefit; the demo account's 22 are ~2,500). Only past 300 does keyword matching pick which ones to send.
   Embeddings and a vector database were considered and skipped: one person's benefits fit in a single prompt.
 
+### 20. Landing page and new sign-in screen (4 October 2026)
+
+- Signed out, the app now opens on a scrolling landing page from the Claude Design file "Squirrel Login"
+  (`components/landing/`): a large "Squirrel" hero with parallax hills, an acorn and leaves; three pinned
+  "how it works" steps; a sideways row of example benefits with squirrel drawings; a closing line on privacy;
+  then "Sign in to Squirrel". `useLandingMotion` runs the scroll effects in one animation frame loop; Reduce
+  Motion turns off the glide, parallax and sway. Colours are the `--land-*` tokens in `index.css`, with dark ones.
+- The sign-in form (`AuthScreen.tsx`, now `SignInView`) keeps its logic (Google, register, forgot password,
+  errors) in the design's layout: Back, "Sign in to Squirrel", the card. It opens directly after a failed Google
+  sign-in or when signed out on an inner page.
+- Left out from the design: its "$240 saved on average" counter (no real figure behind it). Step 3 was changed
+  to match how reminders work (one email, a week before by default), not "a week before and the day before".
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.

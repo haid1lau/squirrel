@@ -77,6 +77,11 @@
     0%, 100% { transform: scale(.8); opacity: .3; }
     50% { transform: translateY(-8px) scale(1.15); opacity: .9; }
   }
+  /* The landing page's "scroll" hint: a dot bobbing in a mouse outline. */
+  --animate-scroll-hint: scroll-hint 1.6s ease-in-out infinite alternate;
+  @keyframes scroll-hint {
+    to { transform: translateY(10px); }
+  }
   /* Fog in the gorge drifts sideways and thins out. */
   @keyframes fog {
     from { transform: translateX(-10px); opacity: 1; }
@@ -132,6 +137,17 @@
   --wood-firefly: none;
   --water: #0EA5E9;      --water-o: 0.3;
   --water-streak: #FFFFFF; --water-streak-o: 0.9;
+  /* The signed-out landing page (components/landing/). */
+  --land-bg: #FBF8F4;
+  --land-header: rgb(251 248 244 / 0.82);
+  --land-hill-far: #F1DEC6;
+  --land-hill-near: #E7C49C;
+  --land-blob-1: oklch(0.9 0.07 60 / 0.85);
+  --land-blob-2: oklch(0.91 0.05 255 / 0.8);
+  --land-blob-3: oklch(0.92 0.045 140 / 0.7);
+  --land-line: #E4DFD7;
+  --land-outline: #D9D3CA;
+  --land-tile-l: 0.93; --land-tile-c: 0.05; --land-tile-ink-l: 0.45;
 }
 
 /* Dark tokens: follow the system setting unless the user picked a theme
@@ -176,6 +192,16 @@
     --wood-firefly: block;
     --water: #60A5FA;      --water-o: 0.32;
     --water-streak: #DBEAFE; --water-streak-o: 0.6;
+    --land-bg: #0B1324;
+    --land-header: rgb(11 19 36 / 0.82);
+    --land-hill-far: #1A2540;
+    --land-hill-near: #25304C;
+    --land-blob-1: oklch(0.45 0.1 60 / 0.45);
+    --land-blob-2: oklch(0.45 0.1 255 / 0.5);
+    --land-blob-3: oklch(0.45 0.08 140 / 0.35);
+    --land-line: #2A3650;
+    --land-outline: #3A4864;
+    --land-tile-l: 0.32; --land-tile-c: 0.06; --land-tile-ink-l: 0.86;
     color-scheme: dark;
   }
 }
@@ -223,6 +249,16 @@
   --wood-firefly: block;
   --water: #60A5FA;      --water-o: 0.32;
   --water-streak: #DBEAFE; --water-streak-o: 0.6;
+  --land-bg: #0B1324;
+  --land-header: rgb(11 19 36 / 0.82);
+  --land-hill-far: #1A2540;
+  --land-hill-near: #25304C;
+  --land-blob-1: oklch(0.45 0.1 60 / 0.45);
+  --land-blob-2: oklch(0.45 0.1 255 / 0.5);
+  --land-blob-3: oklch(0.45 0.08 140 / 0.35);
+  --land-line: #2A3650;
+  --land-outline: #3A4864;
+  --land-tile-l: 0.32; --land-tile-c: 0.06; --land-tile-ink-l: 0.86;
   color-scheme: dark;
 }
 
@@ -282,6 +318,20 @@
     transform-box: fill-box;
     animation: firefly 6s ease-in-out infinite;
   }
+
+  /* Landing page: things fade and slide in as they scroll into view.
+     useLandingMotion sets data-shown; --d is the delay. */
+  [data-reveal] {
+    opacity: 0;
+    transition: opacity .8s cubic-bezier(.2,.7,.2,1) var(--d, 0ms), transform .8s cubic-bezier(.2,.7,.2,1) var(--d, 0ms);
+  }
+  [data-reveal="up"] { transform: translateY(14px); }
+  [data-reveal="card"] { transform: translateY(24px) scale(.97); }
+  [data-reveal="word"] { transform: translateY(.5em); transition-duration: .9s; }
+  [data-reveal="letter"] { transform: translateY(.4em) rotate(6deg); transition-duration: .9s; }
+  [data-reveal="drop"] { transform: translateY(-40px) scale(.8); }
+  [data-reveal="pop"] { transform: scale(.4); }
+  [data-reveal][data-shown] { opacity: 1; transform: none; }
 }
 
 /* Hidden text under a field of drifting dots, like Telegram's spoilers. */
@@ -351,6 +401,7 @@
   .wood-fireflies circle { animation: none; opacity: 0.85; }
   .wood-streaks line, .wood-mist circle, .wood-fog ellipse { animation: none; }
   .wood-ripples ellipse { animation: none; opacity: 0.5; }
+  [data-reveal] { opacity: 1; transform: none; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

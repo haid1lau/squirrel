@@ -3,7 +3,7 @@
 **App:** Squirrel, a benefits tracker for vouchers, memberships, card perks, credits, points and subscriptions
 **Real app:** this folder (`server.py` + React in `frontend/`), at http://127.0.0.1:8000. Technical notes are in `PROGRESS.md` (section 15 covers this work).
 **Design:** Claude Design project `b5107f8e-ccaa-4d8f-9529-bd4d99aaf944`, file `Squirrel.dc.html` ([link](https://claude.ai/design/p/b5107f8e-ccaa-4d8f-9529-bd4d99aaf944?file=Squirrel.dc.html)). The export is in `design/Squirrel.html`.
-**Last updated:** 2026-10-03
+**Last updated:** 2026-10-04
 
 ## Where things stand
 Everything from the Claude Design prototype, and every extra planned on top of it, is now in the real app. Stamp cards were left out on purpose.
@@ -21,6 +21,7 @@ Everything from the Claude Design prototype, and every extra planned on top of i
 | 8 | Your changes: reminders per benefit in the ⋯ menu; voucher codes hidden until tapped | `dd8b70b` |
 | 9 | Livelier background: see-through glass, drifting autumn glow, paper grain | `3041310` |
 | 10 | Woodland scene along the bottom; night forest with fireflies in dark mode; later 40% height, waterfall, mountains, more pines, solid colours | see git log |
+| 11 | Landing page and new sign-in screen (Claude Design "Squirrel Login") | see git log |
 
 ## Decisions
 - **Falling acorns:** 50 (raised from 30 on 2026-10-02). Don't suggest fewer. They play on every Mark as used and Log a use, and when the review queue is cleared, as in the prototype.
@@ -32,6 +33,7 @@ Everything from the Claude Design prototype, and every extra planned on top of i
 - **Credit cards** on Connections are an Apple Wallet-style stack: top strips show; tapping one brings it to the top with the others piled below, then its perks and Remove. Plain colour gradients by card, no bank logos.
 - **Background:** cards are 72% opaque so the glow shows through; menus, toasts and the account dropdown use the nearly solid `glass-float`. Four colour patches (amber, sky, rust, moss) drift over 60 seconds, with a 5% grain on top. Colours are `--color-glow-*` tokens in `index.css`.
 - **Woodland:** `Woodland.tsx`, fixed along the bottom behind everything, 40% of the screen height, or 22% of its width on ultrawide screens so the peaks aren't cut off (1440×640 canvas anchored to the bottom; phones show its right-hand end, zoomed in, so the gorge, waterfall and squirrel stay in view). A snow-capped mountain range, pine-covered far hills, rows of pines and oaks, a misty gorge between two pine-covered rock mountains (shaded inner walls, snowy summits, drifting fog) with an animated waterfall dropping through it into a rippling pool, a squirrel holding an acorn, fallen leaves and acorns. Each layer is one solid colour (paler with distance), so nearer trees and the squirrel fully hide what's behind them. Night forest with 12 fireflies in dark mode. Colours are `--wood-*` and `--water*` in `index.css`. With Reduce Motion, the water and fireflies stay still.
+- **Landing page:** signed-out visitors see a scrolling introduction before the sign-in card (`components/landing/`). The design's "$240 saved on average" counter was left out (no real figure), and step 3 says reminders come a week before (the app sends one, not a second the day before).
 - **Reduce Motion:** the acorn stays still, there are no falling acorns, and other animations become fades.
 
 ## Not tested yet (needs real data)

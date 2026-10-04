@@ -1,7 +1,7 @@
 import { LoaderCircle, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import App from './App'
-import { AuthScreen } from './components/AuthScreen'
+import { Landing } from './components/landing/Landing'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
 import { Button } from './components/ui/Button'
 import { Message } from './components/ui/Message'
@@ -86,7 +86,7 @@ export function Root() {
   }
 
   if (!session.user) {
-    return <AuthScreen googleEnabled={session.google_enabled} initialError={redirect.authError} onSignedIn={load} />
+    return <Landing googleEnabled={session.google_enabled} initialError={redirect.authError} onSignedIn={load} />
   }
 
   return (

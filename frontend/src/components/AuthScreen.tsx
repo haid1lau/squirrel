@@ -1,5 +1,5 @@
 import { ArrowLeft, KeyRound, LogIn, Mail, Send, UserPlus } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useState, type CSSProperties, type FormEvent } from 'react'
 import { api, errorMessage, googleUrl } from '../lib/api'
 import { cn } from '../lib/cn'
 import { fieldClass } from '../lib/styles'
@@ -9,10 +9,12 @@ import { Message } from './ui/Message'
 
 type Mode = 'signin' | 'register' | 'forgot'
 
-interface AuthScreenProps {
+interface SignInViewProps {
   googleEnabled: boolean
   initialError: string | null
   onSignedIn: () => void
+  /** Back to the landing page. */
+  onBack: () => void
 }
 
 /** Asks for an email address and sends a reset link to it. */
@@ -94,7 +96,11 @@ function ForgotPasswordForm({ initialEmail, onBack }: { initialEmail: string; on
   )
 }
 
-export function AuthScreen({ googleEnabled, initialError, onSignedIn }: AuthScreenProps) {
+/**
+ * Sign in, create an account or reset a password: the second view of the
+ * landing page (components/landing/Landing.tsx), as in the Claude Design file.
+ */
+export function SignInView({ googleEnabled, initialError, onSignedIn, onBack }: SignInViewProps) {
   const [mode, setMode] = useState<Mode>('signin')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -123,20 +129,32 @@ export function AuthScreen({ googleEnabled, initialError, onSignedIn }: AuthScre
   }
 
   return (
-    <main className="mx-auto grid min-h-dvh max-w-md content-center gap-6 px-4 py-10">
-      <div className="grid justify-items-center gap-3 text-center">
-        <img src="/icon-192.png" alt="" width={48} height={48} className="size-12" />
-        <h1 className="text-2xl font-bold tracking-tight">
-          {forgot ? 'Reset your password' : registering ? 'Create your Squirrel account' : 'Sign in to Squirrel'}
-        </h1>
-        {forgot ? null : (
-          <p className="text-ink-muted">
-            Connect your Gmail and cards, and never let a voucher, membership or card credit expire unnoticed.
-          </p>
+    <div className="relative w-full max-w-[440px] pt-6 pb-30">
+      <button
+        type="button"
+        data-reveal="up"
+        onClick={onBack}
+        className="-my-3 inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm font-semibold text-ink-muted transition-colors hover:text-ink"
+      >
+        <ArrowLeft className="size-4" aria-hidden />
+        Back
+      </button>
+      <h1
+        tabIndex={-1}
+        data-reveal="up"
+        style={{ '--d': '80ms' } as CSSProperties}
+        className="mt-5 mb-6 text-[40px] leading-[1.05] font-extrabold tracking-[-0.035em] outline-none"
+      >
+        {forgot ? (
+          'Reset your password'
+        ) : (
+          <>
+            {registering ? 'Join' : 'Sign in to'} <span className="text-cta">Squirrel</span>
+          </>
         )}
-      </div>
+      </h1>
 
-      <Card className="grid gap-5 p-6">
+      <Card data-reveal="card" style={{ '--d': '200ms' } as CSSProperties} className="grid gap-5 rounded-3xl p-6">
         {forgot ? (
           <ForgotPasswordForm
             initialEmail={email}
@@ -214,6 +232,7 @@ export function AuthScreen({ googleEnabled, initialError, onSignedIn }: AuthScre
                   id="auth-email"
                   type="email"
                   autoComplete="email"
+                  placeholder="you@gmail.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -277,7 +296,13 @@ export function AuthScreen({ googleEnabled, initialError, onSignedIn }: AuthScre
         )}
       </Card>
 
-      <p className="text-center text-xs text-ink-muted">Squirrel never asks for card numbers or bank logins.</p>
-    </main>
+      <p
+        data-reveal="up"
+        style={{ '--d': '760ms' } as CSSProperties}
+        className="mt-[18px] text-center text-[13px] text-ink-muted"
+      >
+        Squirrel never asks for card numbers or bank logins.
+      </p>
+    </div>
   )
 }
