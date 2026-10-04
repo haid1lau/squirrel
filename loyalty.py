@@ -171,15 +171,18 @@ def record_detection(user_id: str, key: str, record: dict) -> bool:
     return False
 
 
-def detect(user_id: str, find: Finder) -> int:
-    """Checks every program with the given finder. Returns how many new memberships were found."""
+def detect(user_id: str, find: Finder, today: date) -> int:
+    """
+    Checks every program with the given finder. Returns how many new memberships
+    were found. `today` is the date where the user is.
+    """
     found = 0
     for key, program in PROGRAMS.items():
         latest = find(program, False)
         if latest is None:
             continue
         activity = find(program, True) if program["expiry_months"] else None
-        if record_detection(user_id, key, build_record(program, latest, activity)):
+        if record_detection(user_id, key, build_record(program, latest, activity, today)):
             found += 1
     return found
 

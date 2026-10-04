@@ -9,7 +9,7 @@ runs each new one through the extraction engine in app.py.
 - Each scan reads at most scan_jobs.MAX_EMAILS_PER_SCAN new emails, to keep API cost and
   wait time predictable. Running another scan continues with older ones.
 - An email is marked as processed only after the AI model has read it, so emails
-  that failed are retried on the next scan.
+  that failed are retried on the next scans (up to scan_jobs.MAX_TRIES times).
 """
 
 import traceback
@@ -19,6 +19,7 @@ from urllib.parse import quote
 import db
 import google_api
 import loyalty
+import reminders
 import scan_jobs
 
 
@@ -110,14 +111,14 @@ def _scan(user_id: str, job: dict) -> None:
         row = conn.execute(
             "SELECT email, refresh_token_enc FROM gmail_connections WHERE user_id = ?", (user_id,)
         ).fetchone()
-        done = {r["message_id"] for r in conn.execute(
-            "SELECT message_id FROM processed_emails WHERE user_id = ?", (user_id,))}
+        done = scan_jobs.finished_emails(conn, user_id)
+        today = reminders.user_today(conn, user_id)
     if row is None:
         raise google_api.GoogleError("Connect Gmail first.")
     gmail_address = row["email"]
 
     access_token = google_api.refresh_access_token(db.decrypt(row["refresh_token_enc"]))
-    scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(access_token)))
+    scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(access_token), today))
     candidates = [m for m in google_api.search_messages(access_token, SEARCH_QUERY, scan_jobs.SEARCH_LIMIT)
                   if m["id"] not in done]
     batch = candidates[:scan_jobs.MAX_EMAILS_PER_SCAN]
@@ -132,7 +133,7 @@ def _scan(user_id: str, job: dict) -> None:
             }
             yield message["id"], email, "gmail", f"gmail:{message['id']}", extra
 
-    if not scan_jobs.extract_all(user_id, job, tasks()):
+    if not scan_jobs.extract_all(user_id, job, tasks(), today):
         return
 
     with db.connect() as conn:

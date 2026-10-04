@@ -71,7 +71,8 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 | `mailer.py` | Sends the app's own emails (reset links, reminders) over SMTP; prints them in the terminal when SMTP isn't set up. |
 | `reminders.py` | Emails users before benefits expire: each benefit's reminder choice, the user's time zone, which reminders are due, the email, and the 15-minute background check. |
 | `google_api.py` | Google OAuth (PKCE) and the Gmail API calls, using `urllib` only. |
-| `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step. |
+| `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step (an email the AI fails on 3 times is skipped). |
+| `limits.py` | Per-user hourly caps on the requests that call OpenAI: 30 questions, 10 digests, 10 scans. In memory. |
 | `gmail_sync.py` | Gmail scan: Gmail search → `scan_jobs`. Up to 50 new emails per scan. |
 | `imap_sync.py` | Other email over IMAP (TLS, port 993, app password): server lookup by domain, read-only inbox search → `scan_jobs`. |
 | `mailtext.py` | HTML email → plain text, for both readers. |
@@ -102,15 +103,15 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | POST | `/api/benefits/<id>/update` | Edit name, provider, category, value, expiry date, terms. Also clears the review flag. |
 | POST | `/api/benefits/<id>/quick` | One-tap changes from a benefit's card, any of: `used` (true/false), `used_amount` (card credits: dollars spent this period, 0 to the credit's amount), `points`, `reminder` (`null` for the default 1 week, `"off"`, or 7, 14, 30, 60, 90, 180 or 365 days). Undo sends the old values back. |
 | GET | `/api/gmail/status` | Connection + latest scan progress |
-| POST | `/api/gmail/scan` | Starts a background scan (**calls OpenAI**) |
+| POST | `/api/gmail/scan` | Starts a background scan (**calls OpenAI**). 10 an hour, with IMAP scans. |
 | POST | `/api/gmail/disconnect` | Revokes Google access and deletes the stored token |
 | GET | `/api/imap` | Connected IMAP accounts, each with its latest scan status |
 | POST | `/api/imap` (body: `email`, `password`, optional `host`) | Checks the sign-in, then saves the account (password encrypted) |
 | POST | `/api/imap/<id>/scan`, `/api/imap/<id>/remove` | Scan (**calls OpenAI**); disconnect (benefits found are kept) |
 | GET | `/api/cards` | User's cards + catalog |
 | POST | `/api/cards` (body: `card_key`, `anniversary_month`), `/api/cards/<id>/remove` | |
-| GET | `/api/digest` | **Calls OpenAI** |
-| POST | `/api/ask` | **Calls OpenAI**. Saves the question and answer to the history. |
+| GET | `/api/digest` | **Calls OpenAI**, unless nothing changed since the last one (`digest_cache`). 10 an hour. |
+| POST | `/api/ask` | **Calls OpenAI**. Saves the question and answer to the history. 30 an hour. |
 | GET | `/api/ask/history` | Last 50 questions and answers, newest first |
 | POST | `/api/ask/history/clear` | |
 
@@ -375,12 +376,31 @@ Replaced "paste an email" with connected sources:
 - Left out from the design: its "$240 saved on average" counter (no real figure behind it). Step 3 was changed
   to match how reminders work (one email, a week before by default), not "a week before and the day before".
 
+### 21. Backend fixes: failed emails, dates, AI limits, digest cache (4 October 2026)
+
+- **Failed emails stop blocking scans.** `processed_emails` has `done` and `failures` (older rows count as done).
+  An email the AI fails on (a refusal, bad output, an API error that isn't fatal) is tried again by the next scans,
+  then skipped after `scan_jobs.MAX_TRIES` (3), so it can't use up every scan's 50-email limit. Fatal errors (no
+  key, out of credit) still stop the scan without counting against the email.
+- **Dates follow the user's time zone.** `reminders.user_today` gives today's date where the user is. It's used for
+  days left, "used on", card credit periods (`sync_card_benefits` now requires the date), the digest, the assistant,
+  scans (the date given to the AI model, the IMAP search window) and loyalty detection.
+- **Per-user AI limits** (`limits.py`): 30 questions, 10 digests and 10 scans (Gmail and IMAP together) an hour.
+  Past that the endpoint returns 429 with "Try again in N minutes", which the page shows as the error.
+- **Digest cache** (`digest_cache` table): keyed on a hash of the user's unused benefits, their date and the model.
+  Pressing Generate again with nothing changed returns the saved digest without calling OpenAI or counting against
+  the limit. (The dashboard only asks for a digest when the button is pressed, not on every page load.)
+- **Tested** on a copy of the database with the AI faked: 3 model calls then skipped; a once-failed email that then
+  reads is done; 20:00 UTC on 31 October is 1 November in Singapore and the card credits rolled to November; the
+  digest was built once for two requests and again after a change; the 31st question in an hour got a 429.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
 - **Google sign-in and Gmail scanning not yet tried end to end in a browser.** The OAuth client and Gmail API access are verified; the flows were tested with Google mocked.
 - **Card perk catalog is hand-written sample data**, last checked mid-2025, and US cards only. Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
 - **No email verification or account deletion.** (Password reset is done; see section 11.)
+- **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
 - **No real browser click-through yet.** Checks so far are screenshots plus API tests with `curl`.
 - **No automated tests are saved in the repo.** The offline checks run during development were throwaway scripts.

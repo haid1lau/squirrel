@@ -309,7 +309,8 @@ function Hero() {
         <h1
           tabIndex={-1}
           aria-label="Squirrel"
-          className="m-0 flex text-[clamp(72px,17vw,232px)] leading-[.9] font-extrabold tracking-[-0.055em] outline-none"
+          // The bottom margin grows with the type: the "q" hangs ~.2em below the line box.
+          className="m-0 mb-[calc(.22em+20px)] flex text-[clamp(72px,17vw,232px)] leading-[.9] font-extrabold tracking-[-0.055em] outline-none"
         >
           {'Squirrel'.split('').map((ch, i) => (
             <span key={i} aria-hidden data-reveal="letter" className="inline-block" style={delay(100 + i * 70)}>
@@ -317,7 +318,7 @@ function Hero() {
             </span>
           ))}
         </h1>
-        <p className="mt-[22px] mb-0 flex max-w-[16em] flex-wrap gap-x-[.24em] text-[clamp(26px,3.4vw,42px)] leading-[1.1] font-bold tracking-[-0.03em]">
+        <p className="m-0 flex max-w-[16em] flex-wrap gap-x-[.24em] text-[clamp(26px,3.4vw,42px)] leading-[1.1] font-bold tracking-[-0.03em]">
           {HERO_WORDS.map((w, i) => (
             <span
               key={i}

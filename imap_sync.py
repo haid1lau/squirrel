@@ -26,6 +26,7 @@ from typing import Optional
 
 import db
 import loyalty
+import reminders
 import scan_jobs
 from mailtext import html_to_text
 
@@ -304,9 +305,8 @@ def _scan(user_id: str, account_id: str, job: dict) -> None:
     with db.connect() as conn:
         row = conn.execute("SELECT email, host, password_enc FROM imap_accounts WHERE id = ? AND user_id = ?",
                            (account_id, user_id)).fetchone()
-        done = {r["message_id"] for r in conn.execute(
-            "SELECT message_id FROM processed_emails WHERE user_id = ? AND message_id LIKE ?",
-            (user_id, f"imap:{account_id}:%"))}
+        done = scan_jobs.finished_emails(conn, user_id, f"imap:{account_id}:")
+        today = reminders.user_today(conn, user_id)
     if row is None:
         raise ImapError("That email account is no longer connected.")
 
@@ -317,8 +317,8 @@ def _scan(user_id: str, account_id: str, job: dict) -> None:
         if typ != "OK":
             raise ImapError("Couldn't open the inbox.")
         uidvalidity = (imap.response("UIDVALIDITY")[1] or [b"0"])[0].decode()
-        scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(imap)))
-        typ, data = imap.uid("SEARCH", search_criteria())
+        scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(imap), today))
+        typ, data = imap.uid("SEARCH", search_criteria(today))
         if typ != "OK":
             raise ImapError("The email server rejected the search. It may not support searching message text.")
 
@@ -344,7 +344,7 @@ def _scan(user_id: str, account_id: str, job: dict) -> None:
                 extra = {"source_label": message["subject"][:200] or None, "source_account": row["email"]}
                 yield key(uid), message, "imap", key(uid), extra
 
-        if not scan_jobs.extract_all(user_id, job, tasks()):
+        if not scan_jobs.extract_all(user_id, job, tasks(), today):
             return
     finally:
         _close(imap)

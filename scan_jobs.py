@@ -14,11 +14,18 @@ even when the AI step can't run.
 
 Scan progress lives in memory, so restarting the server mid-scan loses it
 (emails already read stay processed).
+
+An email the AI model fails on (a refusal, unusable output) is tried again by
+the next scans, at most MAX_TRIES times in all; after that it's skipped, so a
+few bad emails can't use up every scan's limit and keep older emails from being
+read.
 """
 
+import sqlite3
 import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import asdict
+from datetime import date
 from typing import Callable, Iterable
 
 import db
@@ -34,6 +41,7 @@ SEARCH_DAYS = 180
 SEARCH_LIMIT = 200  # newest matching emails considered per scan
 MAX_EMAILS_PER_SCAN = 50  # caps API cost and wait time per press; the next scan continues
 AI_WORKERS = 5  # emails read by the AI model at the same time
+MAX_TRIES = 3  # times the AI model may fail on one email before it's skipped
 
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
@@ -75,19 +83,36 @@ def forget(key: str) -> None:
         _jobs.pop(key, None)
 
 
+def finished_emails(conn: sqlite3.Connection, user_id: str, prefix: str = "") -> set[str]:
+    """Message keys (starting with prefix) not to send to the AI model again: read, or failed MAX_TRIES times."""
+    return {r["message_id"] for r in conn.execute(
+        "SELECT message_id FROM processed_emails WHERE user_id = ? AND message_id LIKE ? "
+        "AND (done = 1 OR failures >= ?)",
+        (user_id, f"{prefix}%", MAX_TRIES))}
+
+
+def _record_failure(user_id: str, message_key: str) -> None:
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO processed_emails (user_id, message_id, done, failures) VALUES (?, ?, 0, 1) "
+            "ON CONFLICT (user_id, message_id) DO UPDATE SET failures = failures + 1",
+            (user_id, message_key))
+
+
 def extract_and_store(user_id: str, job: dict, message_key: str, email: dict,
-                      source: str, source_ref: str, extra: dict) -> bool:
+                      source: str, source_ref: str, extra: dict, today: date) -> bool:
     """
     Reads one email ({"text", "received_date"}) with the AI model and stores
     any benefit found. `message_key` marks the email as processed; `extra` is
-    merged into the stored benefit (e.g. a link back to the email).
+    merged into the stored benefit (e.g. a link back to the email). `today`
+    is the date where the user is.
 
     Returns False when the scan must stop (an error every email would hit,
-    like a missing API key); the job then already holds the message.
-    Failed emails aren't marked processed, so the next scan retries them.
+    like a missing API key); the job then already holds the message, and the
+    email isn't counted as failed. Other failures are counted (see MAX_TRIES).
     """
     try:
-        result = extract_benefit_from_email(email["text"], email["received_date"])
+        result = extract_benefit_from_email(email["text"], email["received_date"], today)
     except Exception as e:
         described = describe_ai_error(e)
         if described is None:
@@ -96,11 +121,13 @@ def extract_and_store(user_id: str, job: dict, message_key: str, email: dict,
         if fatal:
             update(job, state="error", message=text)
             return False
+        _record_failure(user_id, message_key)
         bump(job, "failed", "checked")
         return True
 
     with db.connect() as conn:
-        conn.execute("INSERT OR IGNORE INTO processed_emails (user_id, message_id) VALUES (?, ?)",
+        conn.execute("INSERT INTO processed_emails (user_id, message_id, done) VALUES (?, ?, 1) "
+                     "ON CONFLICT (user_id, message_id) DO UPDATE SET done = 1",
                      (user_id, message_key))
         if result.is_benefit:
             db.add_benefit(conn, user_id, source, source_ref, {**asdict(result), **extra})
@@ -118,7 +145,7 @@ def extract_and_store(user_id: str, job: dict, message_key: str, email: dict,
 EmailTask = tuple[str, dict, str, str, dict]
 
 
-def extract_all(user_id: str, job: dict, tasks: Iterable[EmailTask]) -> bool:
+def extract_all(user_id: str, job: dict, tasks: Iterable[EmailTask], today: date) -> bool:
     """
     Runs extract_and_store for each task, AI_WORKERS at a time. `tasks` is
     consumed in this thread, so a provider can fetch each email lazily (an
@@ -128,7 +155,7 @@ def extract_all(user_id: str, job: dict, tasks: Iterable[EmailTask]) -> bool:
     stop = threading.Event()
 
     def work(task: EmailTask) -> None:
-        if not stop.is_set() and not extract_and_store(user_id, job, *task):
+        if not stop.is_set() and not extract_and_store(user_id, job, *task, today):
             stop.set()
 
     with ThreadPoolExecutor(AI_WORKERS) as pool:

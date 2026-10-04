@@ -78,11 +78,15 @@ CREATE TABLE IF NOT EXISTS imap_accounts (
     UNIQUE (user_id, email)
 );
 
--- Emails already sent to the AI model, so each is read only once. message_id
--- is Gmail's id, or 'imap:<account id>:<uidvalidity>:<uid>'.
+-- Emails sent to the AI model. message_id is Gmail's id, or
+-- 'imap:<account id>:<uidvalidity>:<uid>'. done = 1 once it's been read, so
+-- it's never read again; one the model keeps failing on is tried again by
+-- later scans until failures reaches scan_jobs.MAX_TRIES, then skipped.
 CREATE TABLE IF NOT EXISTS processed_emails (
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message_id TEXT NOT NULL,
+    done       INTEGER NOT NULL DEFAULT 1,
+    failures   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, message_id)
 );
 
@@ -139,6 +143,15 @@ CREATE TABLE IF NOT EXISTS ask_history (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ask_history_user ON ask_history (user_id, created_at);
+
+-- Each user's last weekly digest. key is a hash of what it was built from
+-- (their benefits and the date), so it's only rebuilt when one changes.
+CREATE TABLE IF NOT EXISTS digest_cache (
+    user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    key        TEXT NOT NULL,
+    digest     TEXT NOT NULL,       -- JSON, as returned by /api/digest
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -155,6 +168,8 @@ def init() -> None:
     with connect() as conn:
         conn.executescript(SCHEMA)
         _add_columns(conn, "reminder_settings", {"categories": "TEXT NOT NULL DEFAULT '{}'", "timezone": "TEXT"})
+        _add_columns(conn, "processed_emails",
+                     {"done": "INTEGER NOT NULL DEFAULT 1", "failures": "INTEGER NOT NULL DEFAULT 0"})
         _add_benefit_types(conn)
 
 

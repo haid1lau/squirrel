@@ -16,7 +16,7 @@ function scanSummary(s: ScanStatus) {
     `${s.needs_review ?? 0} to review`,
     `${plural(s.skipped ?? 0, 'email')} weren’t benefits`,
   ]
-  if (s.failed) parts.push(`${plural(s.failed, 'email')} couldn’t be read (retried next scan)`)
+  if (s.failed) parts.push(`${plural(s.failed, 'email')} couldn’t be read (tried again next scan, up to 3 times)`)
   let text = s.checked ? `Checked ${plural(s.checked, 'email')}: ${parts.join(', ')}.` : 'No new benefit emails found.'
   if (s.remaining) text += ` ${plural(s.remaining, 'older email')} still to check — scan again to continue.`
   return text

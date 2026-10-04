@@ -16,6 +16,7 @@ from datetime import date
 from typing import Optional
 
 import db
+import reminders
 from app import ExtractedBenefit
 from dataclasses import asdict
 
@@ -209,7 +210,7 @@ def add_user_card(user_id: str, card_key: str, anniversary_month: Optional[int])
             "INSERT INTO user_cards (id, user_id, card_key, anniversary_month, added_at) VALUES (?, ?, ?, ?, ?)",
             (card_id, user_id, card_key, anniversary_month, db.now_iso()),
         )
-        sync_card_benefits(conn, user_id)
+        sync_card_benefits(conn, user_id, reminders.user_today(conn, user_id))
     return {"id": card_id, "card_key": card_key, "anniversary_month": anniversary_month,
             "name": CATALOG[card_key]["name"]}
 
@@ -224,12 +225,12 @@ def remove_user_card(user_id: str, card_id: str) -> bool:
     return True
 
 
-def sync_card_benefits(conn: sqlite3.Connection, user_id: str, today: Optional[date] = None) -> None:
+def sync_card_benefits(conn: sqlite3.Connection, user_id: str, today: date) -> None:
     """
     Makes sure each perk has a benefit for its current period, and removes
-    benefits for periods that have ended. Cheap; runs whenever benefits are listed.
+    benefits for periods that have ended. Cheap; runs whenever benefits are
+    listed. `today` is the date where the user is (reminders.user_today).
     """
-    today = today or date.today()
     current: set[str] = set()
     for user_card in conn.execute(
         "SELECT id, card_key, anniversary_month FROM user_cards WHERE user_id = ?", (user_id,)

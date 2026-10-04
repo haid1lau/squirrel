@@ -20,6 +20,7 @@ perks of credit cards they add. Data is stored in instance/benefitapp.db.
 
 import config  # noqa: F401  (loads .env before anything reads the environment)
 
+import hashlib
 import json
 import mimetypes
 import re
@@ -40,9 +41,10 @@ import db
 import gmail_sync
 import google_api
 import imap_sync
+import limits
 import mailer
 import reminders
-from app import CATEGORIES, TYPES, ExtractedBenefit, ExtractionError, describe_ai_error
+from app import CATEGORIES, MODEL, TYPES, ExtractedBenefit, ExtractionError, describe_ai_error
 from BenefitIntelligence import ask_about_benefits, build_weekly_digest
 
 DIST_DIR = (config.ROOT / "frontend" / "dist").resolve()
@@ -72,11 +74,12 @@ def credit_total(record: dict) -> Optional[float]:
     return float(m.group(1)) if m else None
 
 
-def with_days(record: dict) -> dict:
+def with_days(record: dict, today: date) -> dict:
+    """The record plus what the page shows about it; `today` is the date where the user is."""
     days = None
     if record.get("expiry_date"):
         try:
-            days = (date.fromisoformat(record["expiry_date"]) - date.today()).days
+            days = (date.fromisoformat(record["expiry_date"]) - today).days
         except ValueError:
             pass
     return {**record, "days_until_expiry": days, "credit_total": credit_total(record)}
@@ -95,10 +98,24 @@ def parse_points(value) -> Optional[int]:
     return points
 
 
-def user_benefits(user_id: str) -> list[dict]:
+def user_today(user_id: str) -> date:
     with db.connect() as conn:
-        cards.sync_card_benefits(conn, user_id)
+        return reminders.user_today(conn, user_id)
+
+
+def user_benefits(user_id: str, today: date) -> list[dict]:
+    with db.connect() as conn:
+        cards.sync_card_benefits(conn, user_id, today)
         return db.list_benefits(conn, user_id)
+
+
+LIMIT_NAMES = {"ask": "questions", "digest": "digests", "scan": "scans"}
+
+
+def digest_key(benefits: list[ExtractedBenefit], today: date) -> str:
+    """What a digest depends on: the benefits, the date (days left change daily) and the model."""
+    raw = json.dumps([asdict(b) for b in benefits], sort_keys=True) + today.isoformat() + MODEL
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 def _send_reset_email(address: str, link: str) -> None:
@@ -188,6 +205,16 @@ class Handler(BaseHTTPRequestHandler):
         token = auth.create_session(user_id)
         return _cookie(auth.SESSION_COOKIE, token, max_age=auth.SESSION_DAYS * 86400)
 
+    def _over_limit(self, user: dict, kind: str) -> bool:
+        """Uses up one of the user's hourly AI requests of this kind, or sends a 429 and returns True."""
+        wait_minutes = limits.take(user["id"], kind)
+        if wait_minutes is None:
+            return False
+        self._error(HTTPStatus.TOO_MANY_REQUESTS,
+                    f"That's the most {LIMIT_NAMES[kind]} for one hour ({limits.LIMITS[kind]}). "
+                    f"Try again in {wait_minutes} minute{'s' if wait_minutes != 1 else ''}.")
+        return True
+
     def _call_ai(self, fn, *args):
         """Runs an AI call and maps its failures to HTTP errors. Returns (ok, result)."""
         try:
@@ -232,13 +259,11 @@ class Handler(BaseHTTPRequestHandler):
             self._google_callback(query)
         elif path == "/api/benefits":
             if user := self._require_user():
-                self._send_json(HTTPStatus.OK, [with_days(r) for r in user_benefits(user["id"])])
+                today = user_today(user["id"])
+                self._send_json(HTTPStatus.OK, [with_days(r, today) for r in user_benefits(user["id"], today)])
         elif path == "/api/digest":
             if user := self._require_user():
-                benefits = [to_benefit(r) for r in user_benefits(user["id"]) if not r.get("used_on")]
-                ok, digest = self._call_ai(build_weekly_digest, benefits)
-                if ok:
-                    self._send_json(HTTPStatus.OK, digest)
+                self._digest(user)
         elif path == "/api/ask/history":
             if user := self._require_user():
                 with db.connect() as conn:
@@ -303,6 +328,8 @@ class Handler(BaseHTTPRequestHandler):
                 db.clear_ask_history(conn, user["id"])
             self._send_json(HTTPStatus.OK, {"ok": True})
         elif path == "/api/gmail/scan":
+            if self._over_limit(user, "scan"):
+                return
             try:
                 self._send_json(HTTPStatus.OK, gmail_sync.start_scan(user["id"]))
             except google_api.GoogleError as e:
@@ -314,6 +341,8 @@ class Handler(BaseHTTPRequestHandler):
             self._imap_action(lambda: imap_sync.add_account(
                 user["id"], str(data.get("email") or ""), str(data.get("password") or ""), str(data.get("host") or "")))
         elif m := re.fullmatch(r"/api/imap/([0-9a-f]{12})/scan", path):
+            if self._over_limit(user, "scan"):
+                return
             self._imap_action(lambda: imap_sync.start_scan(user["id"], m.group(1)))
         elif m := re.fullmatch(r"/api/imap/([0-9a-f]{12})/remove", path):
             if imap_sync.remove_account(user["id"], m.group(1)):
@@ -482,12 +511,38 @@ class Handler(BaseHTTPRequestHandler):
         if not question:
             self._error(HTTPStatus.BAD_REQUEST, "Type a question first.")
             return
-        benefits = [to_benefit(r) for r in user_benefits(user["id"]) if not r.get("used_on")]
-        ok, answer = self._call_ai(ask_about_benefits, question, benefits)
+        if self._over_limit(user, "ask"):
+            return
+        today = user_today(user["id"])
+        benefits = [to_benefit(r) for r in user_benefits(user["id"], today) if not r.get("used_on")]
+        ok, answer = self._call_ai(ask_about_benefits, question, benefits, today)
         if ok:
             with db.connect() as conn:
                 entry = db.add_ask_history(conn, user["id"], question, answer)
             self._send_json(HTTPStatus.OK, entry)
+
+    def _digest(self, user: dict) -> None:
+        """The weekly digest, from digest_cache unless the benefits or the date changed since it was made."""
+        today = user_today(user["id"])
+        benefits = [to_benefit(r) for r in user_benefits(user["id"], today) if not r.get("used_on")]
+        key = digest_key(benefits, today)
+        with db.connect() as conn:
+            row = conn.execute("SELECT key, digest FROM digest_cache WHERE user_id = ?", (user["id"],)).fetchone()
+        if row and row["key"] == key:
+            self._send_json(HTTPStatus.OK, json.loads(row["digest"]))
+            return
+        if self._over_limit(user, "digest"):
+            return
+        ok, digest = self._call_ai(build_weekly_digest, benefits, today)
+        if not ok:
+            return
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO digest_cache (user_id, key, digest, created_at) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT (user_id) DO UPDATE SET key = excluded.key, digest = excluded.digest, "
+                "created_at = excluded.created_at",
+                (user["id"], key, json.dumps(digest), db.now_iso()))
+        self._send_json(HTTPStatus.OK, digest)
 
     def _review(self, user: dict, benefit_id: str, action: str, data: dict) -> None:
         with db.connect() as conn:
@@ -500,6 +555,7 @@ class Handler(BaseHTTPRequestHandler):
                 db.dismiss_benefit(conn, user["id"], benefit_id)
                 self._send_json(HTTPStatus.OK, {"ok": True})
                 return
+            today = reminders.user_today(conn, user["id"])
 
             expiry = (data.get("expiry_date") or "").strip() or None
             if expiry:
@@ -517,7 +573,7 @@ class Handler(BaseHTTPRequestHandler):
             )
             stored = {k: v for k, v in record.items() if k not in ("id", "source")}
             db.update_benefit_data(conn, user["id"], benefit_id, stored)
-        self._send_json(HTTPStatus.OK, with_days(record))
+        self._send_json(HTTPStatus.OK, with_days(record, today))
 
     def _read_benefit_fields(self, data: dict) -> Optional[dict]:
         """
@@ -578,7 +634,8 @@ class Handler(BaseHTTPRequestHandler):
         with db.connect() as conn:
             db.add_benefit(conn, user["id"], "manual", f"manual:{benefit_id}", asdict(record), benefit_id)
             stored = db.get_benefit(conn, user["id"], benefit_id)
-        self._send_json(HTTPStatus.OK, with_days(stored))
+            today = reminders.user_today(conn, user["id"])
+        self._send_json(HTTPStatus.OK, with_days(stored, today))
 
     def _update_benefit(self, user: dict, benefit_id: str, data: dict) -> None:
         """Edits a benefit's details. Saving marks it as checked by the user."""
@@ -601,7 +658,8 @@ class Handler(BaseHTTPRequestHandler):
             record.update(fields_, needs_review=False, review_reason=None)
             stored = {k: v for k, v in record.items() if k not in ("id", "source")}
             db.update_benefit_data(conn, user["id"], benefit_id, stored)
-        self._send_json(HTTPStatus.OK, with_days(record))
+            today = reminders.user_today(conn, user["id"])
+        self._send_json(HTTPStatus.OK, with_days(record, today))
 
     def _quick_update(self, user: dict, benefit_id: str, data: dict) -> None:
         """
@@ -615,12 +673,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._error(HTTPStatus.NOT_FOUND, "That benefit no longer exists.")
                 return
             total = credit_total(record)
+            today = reminders.user_today(conn, user["id"])
             try:
                 if "used" in data:
                     if not isinstance(data["used"], bool):
                         raise ValueError("used must be true or false.")
                     if data["used"]:
-                        record.update(used_on=date.today().isoformat(), used_amount=total)
+                        record.update(used_on=today.isoformat(), used_amount=total)
                     else:
                         record.update(used_on=None, used_amount=None)
                 if "used_amount" in data:
@@ -633,7 +692,7 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError(f"Enter an amount between $0 and ${total:g}.")
                     amount = round(float(amount), 2)
                     record.update(used_amount=amount or None,
-                                  used_on=date.today().isoformat() if amount >= total else None)
+                                  used_on=today.isoformat() if amount >= total else None)
                 if "points" in data:
                     record["points"] = parse_points(data["points"])
                 if "reminder" in data:
@@ -643,7 +702,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             stored = {k: v for k, v in record.items() if k not in ("id", "source")}
             db.update_benefit_data(conn, user["id"], benefit_id, stored)
-        self._send_json(HTTPStatus.OK, with_days(record))
+        self._send_json(HTTPStatus.OK, with_days(record, today))
 
     def _imap_action(self, fn) -> None:
         try:

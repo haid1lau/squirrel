@@ -88,6 +88,14 @@ def local_now(settings: dict, now_utc: datetime) -> datetime:
     return now_utc.astimezone()
 
 
+def user_today(conn, user_id: str) -> date:
+    """
+    Today's date where the user is. Everything that depends on the date (days
+    left, card credit periods, "used on") uses this, not the server's date.
+    """
+    return local_now(get_settings(conn, user_id), datetime.now(timezone.utc)).date()
+
+
 def parse_reminder(value) -> Reminder:
     """A benefit's reminder from a request: None (the default), "off" or days before expiry."""
     if value in (None, "", "default"):
@@ -195,7 +203,7 @@ def run_due(now: Optional[datetime] = None) -> int:
             if not settings["enabled"] or local.hour < SEND_FROM_HOUR:
                 continue
             today = local.date()
-            cards.sync_card_benefits(conn, user["id"])  # so a new period's credits are included
+            cards.sync_card_benefits(conn, user["id"], today)  # so a new period's credits are included
             benefits = db.list_benefits(conn, user["id"])
             sent = {(r["benefit_id"], r["expiry_date"]) for r in conn.execute(
                 "SELECT benefit_id, expiry_date FROM reminders_sent WHERE user_id = ?", (user["id"],))}
