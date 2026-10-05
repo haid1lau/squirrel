@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { SignInView } from '../AuthScreen'
 import { LandingArt } from './LandingArt'
+import { Snowball } from './Snowball'
 import { useLandingMotion } from './useLandingMotion'
 
 // The signed-out page, from the Claude Design file "Squirrel Login": a scrolling
@@ -272,22 +273,27 @@ export function Landing({ googleEnabled, initialError, onSignedIn }: LandingProp
                   .
                 </p>
               </section>
-              <section className="flex flex-col items-start gap-6 pt-10 pb-36">
-                <h2
-                  data-reveal="up"
-                  className="m-0 text-[clamp(36px,4.6vw,56px)] leading-[1.05] font-extrabold tracking-[-0.035em]"
-                >
-                  Ready when you are.
-                </h2>
-                <button
-                  type="button"
-                  data-reveal="up"
-                  style={delay(120)}
-                  onClick={() => setView('signin')}
-                  className="min-h-11 cursor-pointer rounded-full bg-ink px-6.5 py-3.5 text-base font-semibold text-(--land-bg) transition-colors hover:bg-cta hover:text-white"
-                >
-                  Sign in to Squirrel
-                </button>
+              <section className="flex flex-col-reverse gap-8 pt-10 pb-36 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col items-start gap-6">
+                  <h2
+                    data-reveal="up"
+                    className="m-0 text-[clamp(36px,4.6vw,56px)] leading-[1.05] font-extrabold tracking-[-0.035em] text-balance sm:whitespace-nowrap"
+                  >
+                    Ready when you are.
+                  </h2>
+                  <button
+                    type="button"
+                    data-reveal="up"
+                    style={delay(120)}
+                    onClick={() => setView('signin')}
+                    className="min-h-11 cursor-pointer rounded-full bg-ink px-6.5 py-3.5 text-base font-semibold text-(--land-bg) transition-colors hover:bg-cta hover:text-white"
+                  >
+                    Sign in to Squirrel
+                  </button>
+                </div>
+                <div data-reveal="up" style={delay(240)} className="w-[200px] shrink-0">
+                  <Snowball className="block h-auto w-full" />
+                </div>
               </section>
             </div>
           </div>

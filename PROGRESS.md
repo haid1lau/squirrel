@@ -384,7 +384,7 @@ Replaced "paste an email" with connected sources:
 - Signed out, the app now opens on a scrolling landing page from the Claude Design file "Squirrel Login"
   (`components/landing/`): a large "Squirrel" hero with parallax hills, an acorn and leaves; three pinned
   "how it works" steps; a sideways row of example benefits with squirrel drawings; a closing line on privacy;
-  then "Sign in to Squirrel". `useLandingMotion` runs the scroll effects in one animation frame loop; Reduce
+  then "Ready when you are." beside Snowball, a white squirrel spinning an acorn (`Snowball.tsx`), and "Sign in to Squirrel". `useLandingMotion` runs the scroll effects in one animation frame loop; Reduce
   Motion turns off the glide, parallax and sway. Colours are the `--land-*` tokens in `index.css`, with dark ones.
 - The sign-in form (`AuthScreen.tsx`, now `SignInView`) keeps its logic (Google, register, forgot password,
   errors) in the design's layout: Back, "Sign in to Squirrel", the card. It opens directly after a failed Google
