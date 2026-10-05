@@ -1,6 +1,7 @@
 import { CardsPanel } from '../components/CardsPanel'
 import { EmailAccountsPanel } from '../components/EmailAccountsPanel'
 import { GmailPanel } from '../components/GmailPanel'
+import { OutlookPanel } from '../components/OutlookPanel'
 import type { Session } from '../lib/api'
 
 interface ConnectionsPageProps {
@@ -26,6 +27,7 @@ export function ConnectionsPage({ session, onBenefitsChanged, onSessionChange }:
             onConnectionChange={onSessionChange}
             onScanFinished={onBenefitsChanged}
           />
+          <OutlookPanel microsoftEnabled={session.microsoft_enabled} onScanFinished={onBenefitsChanged} />
           <EmailAccountsPanel onScanFinished={onBenefitsChanged} />
         </div>
         <div className="grid items-start gap-6">

@@ -60,7 +60,15 @@ interface Filters {
   sort: Sort
 }
 
-const NO_FILTERS: Filters = { query: '', kind: 'all', type: 'all', category: 'all', source: 'all', status: 'all', sort: 'expiry' }
+const NO_FILTERS: Filters = {
+  query: '',
+  kind: 'all',
+  type: 'all',
+  category: 'all',
+  source: 'all',
+  status: 'all',
+  sort: 'expiry',
+}
 
 function matchesStatus(b: Benefit, status: Status) {
   const days = b.days_until_expiry
@@ -149,7 +157,10 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
   const kindCounts = useMemo(
     () =>
       Object.fromEntries(
-        (Object.keys(KINDS) as Kind[]).map((k) => [k, current ? applyFilters(current, { ...filters, kind: k }).length : 0]),
+        (Object.keys(KINDS) as Kind[]).map((k) => [
+          k,
+          current ? applyFilters(current, { ...filters, kind: k }).length : 0,
+        ]),
       ) as Record<Kind, number>,
     [current, filters],
   )
@@ -202,7 +213,10 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 tabIndex={-1} className="text-3xl font-extrabold tracking-[-0.03em] outline-none sm:text-[40px] sm:leading-tight">
+          <h1
+            tabIndex={-1}
+            className="text-3xl font-extrabold tracking-[-0.03em] outline-none sm:text-[40px] sm:leading-tight"
+          >
             All Benefits
           </h1>
           {current ? (
@@ -228,7 +242,8 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
         <Card as="section" aria-labelledby="add-title">
           <CardHeader icon={Plus} title="Add a benefit" titleId="add-title" />
           <p className="px-5 pt-4 text-sm text-ink-muted">
-            For vouchers, memberships and points that aren’t in your email, like a paper gift card or your hotel points balance.
+            For vouchers, memberships and points that aren’t in your email, like a paper gift card or your hotel points
+            balance.
           </p>
           <EditBenefitForm
             as="div"
@@ -256,7 +271,10 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
             <label htmlFor="benefit-search" className="sr-only">
               Search benefits
             </label>
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted"
+              aria-hidden
+            />
             <input
               id="benefit-search"
               ref={searchRef}
@@ -304,7 +322,8 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
                   on ? 'border-transparent bg-ink text-bg' : 'glass border-line hover:bg-surface-2',
                 )}
               >
-                {KINDS[k]} <span className={cn('tabular-nums', on ? 'opacity-70' : 'text-ink-muted')}>{kindCounts[k]}</span>
+                {KINDS[k]}{' '}
+                <span className={cn('tabular-nums', on ? 'opacity-70' : 'text-ink-muted')}>{kindCounts[k]}</span>
               </button>
             )
           })}
@@ -344,7 +363,8 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
             <select id="filter-source" value={filters.source} onChange={set('source')} className={selectClass}>
               <option value="all">All sources</option>
               <option value="gmail">From Gmail</option>
-              <option value="imap">Other email</option>
+              <option value="outlook">From Outlook</option>
+              <option value="imap">Email accounts</option>
               <option value="loyalty">Memberships found</option>
               <option value="card">Card perks</option>
               <option value="manual">Added by you</option>

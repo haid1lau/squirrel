@@ -16,6 +16,7 @@ import { DashboardPage } from './pages/DashboardPage'
 
 const NOTICES: Record<string, string> = {
   gmail_connected: 'Gmail connected. Scan your inbox to find benefits.',
+  outlook_connected: 'Outlook connected. Scan your mailbox to find benefits.',
   signed_in: 'Signed in with Google.',
 }
 
@@ -23,24 +24,28 @@ interface AppProps {
   user: User
   session: Session
   notice: string | null
+  /** Why connecting Gmail or Outlook failed, from the redirect back. */
+  authError: string | null
   onSessionChange: () => void
   onSignOut: () => Promise<void>
 }
 
-export default function App({ user, session, notice, onSessionChange, onSignOut }: AppProps) {
+export default function App({ user, session, notice, authError, onSessionChange, onSignOut }: AppProps) {
   const toast = useToast()
   // Loaded once here so every page shares the same list and sees each other's edits.
   const { benefits, error, reload, upsert, remove } = useBenefits()
   const path = usePath()
   const page = PAGES.find((p) => p.path === path)
 
-  // One-off message after returning from Google (the ref stops StrictMode showing it twice).
+  // One-off message after returning from Google or Microsoft (the ref stops StrictMode showing it twice).
   const noticeShown = useRef(false)
   useEffect(() => {
-    if (noticeShown.current || !notice || !NOTICES[notice]) return
+    if (noticeShown.current) return
+    if (authError) toast('error', authError)
+    else if (notice && NOTICES[notice]) toast('success', NOTICES[notice])
+    else return
     noticeShown.current = true
-    toast('success', NOTICES[notice])
-  }, [notice, toast])
+  }, [notice, authError, toast])
 
   // On each page change: new tab title, back to the top, and focus on the
   // page heading so screen readers announce the new page.

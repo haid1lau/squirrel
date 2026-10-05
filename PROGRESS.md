@@ -16,8 +16,8 @@ Anything with an uncertain expiry date goes to a review queue instead of being t
 
 ## ⚠️ Before anything else
 
-1. **Set `OPENAI_API_KEY` in `.env`.** It's still empty, so the AI features (Gmail scanning, digest, assistant) have **never been run against the real API**. They've only been tested with the API mocked. The model defaults to `gpt-5.5`; set `OPENAI_MODEL` to change it.
-2. **Google OAuth client: done** (30 September 2026). `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are in `.env`. The secret was rotated and the new one checked against Google (1 October); the Gmail API is enabled; the owner renamed the app to Squirrel under Branding and believes the old secret is deleted (2 October). **Still to do:** confirm the Clients page lists only one secret, and try Google sign-in + Connect Gmail end to end in the browser (the consent screen should say "to continue to Squirrel").
+1. **OpenAI key: done** (5 October 2026). `OPENAI_API_KEY` is set and `OPENAI_MODEL=gpt-5.4-mini` (about 7× cheaper than the `gpt-5.5` default). Checked live on the demo account: email extraction (name, provider, value, date and code right), digest (21 benefits ranked; the second request came from the cache) and the assistant. **Still to do:** a real Gmail scan, and checking extraction accuracy on real emails. Set a monthly budget limit in the OpenAI dashboard.
+2. **Google: done** (5 October 2026). `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are in `.env`, the Gmail API is enabled and the app is named Squirrel. The owner tried Google sign-in, Connect Gmail and a real scan; the only problem found (Squirrel's own reminder emails read as benefits) is fixed (section 22). While in Testing, only listed test users can sign in, and their Gmail access expires after 7 days.
 3. **Email (SMTP): done.** Password resets and reminders come from `Squirrel Support <squirrelappsg@gmail.com>` (Gmail app password in `.env`). Delivery confirmed for reset emails and a sample reminder (2 October).
 
 `server.py` loads `.env` on start, so restart it after changing `.env`.
@@ -35,9 +35,18 @@ Always open the app at `http://127.0.0.1:8000` (not `localhost`), so the sign-in
 
 **Public launch warning:** `gmail.readonly` is a Google *restricted* scope. In Testing mode it works for listed test users only, and Google expires their Gmail access after 7 days, so testers must reconnect Gmail weekly (the app detects this and asks them to reconnect). Opening it to the public requires Google's verification and a yearly third-party security assessment.
 
+### Outlook (Microsoft) sign-in: one-time setup
+
+1. Go to [portal.azure.com](https://portal.azure.com) (a free Microsoft account works) → **Microsoft Entra ID → App registrations → New registration**.
+2. Name: **Squirrel**. Supported account types: **Accounts in any organizational directory and personal Microsoft accounts**.
+3. Redirect URI: platform **Web**, `http://localhost:8000/api/auth/microsoft/callback` (Microsoft only allows plain `http` on `localhost`; the server forwards the browser on to `127.0.0.1`). When hosted, add `https://<your address>/api/auth/microsoft/callback`.
+4. **API permissions → Add a permission → Microsoft Graph → Delegated:** `Mail.Read`, `User.Read`, `offline_access` (plus `openid`, `email`, `profile`). No admin consent is needed for personal accounts.
+5. **Certificates & secrets → New client secret.** Copy its **Value** (shown once) and the **Application (client) ID** from Overview into `.env` as `MICROSOFT_CLIENT_SECRET` and `MICROSOFT_CLIENT_ID`, then restart `server.py`. Secrets expire (up to 24 months): note the date.
+6. Before launch: **Branding & properties → Publisher verification** (needs a free Microsoft Partner Network ID). Without it, people see "unverified" on Microsoft's screen, and many work and school accounts can't connect.
+
 ### Owner decisions (30 September 2026)
 - **Live points balances from loyalty programs: not now** (1 October 2026). AwardWallet's API was ruled out (users need AwardWallet accounts, pricing isn't public, it needs a fixed-IP server). **Future option:** Singapore Airlines' developer portal has a KrisFlyer *Get Customer Details* API with the live miles balance, a free sandbox and a KrisFlyer partnership track; Accor's portal has partner loyalty APIs (earn, burn, account linking) but no public balance lookup. Both need a commercial partnership and a hosted app with terms and a privacy policy.
-- **Other email providers: IMAP first (done), Outlook later.** ⏰ **Reminder: add Outlook / Hotmail / Microsoft 365** through Microsoft's own sign-in (Microsoft Graph, read-only mail access). It needs a free app registration in the Azure portal, with its ID and secret in `.env`. IMAP can't cover Outlook: Microsoft switched off app-password sign-in.
+- **Other email providers: IMAP first (done), then Outlook (built 5 October 2026, section 24).** Outlook, Hotmail, Live and Microsoft 365 connect through Microsoft's own sign-in (Microsoft Graph, read-only mail), because Microsoft switched off app-password sign-in. It needs the app registration below before it works.
 - **Benefit fields** (1–2 October 2026): **Type** is Membership, Subscription, Voucher or Other (Travel, Health and Retail were dropped). **Category** is Entertainment, Transport, Travel, Dining, Wellness, Shopping or Others.
 - **Reminders** (2 October 2026, changed the same day): by email, 1 week before by default; each benefit's ⋯ menu → **Reminder** sets 1 week, 2 weeks, 1, 2, 3 or 6 months, 1 year before, or none. No account-wide or per-category settings.
 - **No "import an email" option.** Don't build `.eml` upload or paste-an-email import; benefits come from connected inboxes, cards, or typing a benefit in by hand.
@@ -73,6 +82,8 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 | `google_api.py` | Google OAuth (PKCE) and the Gmail API calls, using `urllib` only. |
 | `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step (an email the AI fails on 3 times is skipped). |
 | `limits.py` | Per-user hourly caps on the requests that call OpenAI: 30 questions, 10 digests, 10 scans. In memory. |
+| `microsoft_api.py` | Microsoft sign-in (PKCE) and the Microsoft Graph mail calls for Outlook, using `urllib` only. |
+| `outlook_sync.py` | Outlook scan: Graph search (KQL, every folder but Sent, Drafts, Deleted and Junk) → `scan_jobs`. Same limits as Gmail. |
 | `gmail_sync.py` | Gmail scan: Gmail search → `scan_jobs`. Up to 50 new emails per scan. |
 | `imap_sync.py` | Other email over IMAP (TLS, port 993, app password): server lookup by domain, read-only inbox search → `scan_jobs`. |
 | `mailtext.py` | HTML email → plain text, for both readers. |
@@ -97,6 +108,9 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | POST | `/api/timezone` (body: `timezone`, e.g. `Asia/Singapore`) | Sent by the browser on every load; reminders follow it |
 | GET | `/api/auth/google/start?purpose=login\|connect` | Browser redirect to Google |
 | GET | `/api/auth/google/callback` | Google redirects back here |
+| GET | `/api/auth/microsoft/start`, `/api/auth/microsoft/callback` | Connect Outlook (browser redirects to and from Microsoft) |
+| GET | `/api/outlook/status` | Outlook connection and latest scan |
+| POST | `/api/outlook/scan`, `/api/outlook/disconnect` | Scan (**calls OpenAI**; counts toward the 10 scans an hour); disconnect (benefits found are kept) |
 | GET | `/api/benefits` | User's active benefits (card perks refreshed for the current period) |
 | POST | `/api/benefits/<id>/approve`, `/dismiss` | Review queue. Dismissed items are kept hidden so scans don't re-add them. `dismiss` is also "Remove", and "Hide until it resets" for card perks. |
 | POST | `/api/benefits` | Add a benefit by hand (`source: manual`). Same fields and checks as `update`, including an optional whole-number `points` balance instead of `value`. |
@@ -394,6 +408,47 @@ Replaced "paste an email" with connected sources:
   reads is done; 20:00 UTC on 31 October is 1 November in Singapore and the card credits rolled to November; the
   digest was built once for two requests and again after a change; the 31st question in an hour got a 429.
 
+### 22. Scans skip Squirrel's own emails (5 October 2026)
+
+- Reminder emails list expiring benefits, so a Gmail scan read the sample reminder back in as two new benefits. Gmail
+  and IMAP scans now leave out email from `config.MAIL_FROM_ADDRESS` (`-from:` / `NOT FROM`). The two benefits were
+  removed (dismissed, so they don't come back).
+
+### 23. Anyone can sign in with Google, and connect Gmail with an app password (5 October 2026)
+
+- **Google sign-in asks only for `openid email profile`** (`google_api.SIGN_IN_SCOPES`). These need no
+  restricted-scope verification, so once the app is hosted, the Google client can be published (Audience → Publish
+  app) and anyone can sign in. `gmail.readonly` is only requested by **Connect Gmail**, which stays limited to test
+  users (and 7-day access) until Google verifies the app; its card says so and points to the app-password route.
+- **Gmail over IMAP** with an app password (needs 2-Step Verification; myaccount.google.com/apppasswords). The
+  "Other email" card is now **Email accounts** and lists Gmail first. For `imap.gmail.com` the scan matches the
+  Gmail API scan: it opens All Mail (found by its `\All` flag, so archived email and other languages work), searches
+  with the same Gmail query (`gmail_sync.SEARCH_QUERY` via `X-GM-RAW`, sent as a literal), and adds an "Open the
+  email" link from `X-GM-THRID`. A rejected Gmail sign-in explains how to make an app password.
+- **Tested** with a fake IMAP server (folder lookup, search, links) and a real sign-in attempt to imap.gmail.com with
+  a wrong password (the new message). **Not yet tried with a real Gmail app password.**
+- Someone who connects the same Gmail both ways gets each benefit twice (different sources); use one or the other.
+
+### 24. Outlook, Hotmail and Microsoft 365 (5 October 2026)
+
+- **Connect Outlook** card on Connections, for personal (Outlook.com, Hotmail, Live) and work or school accounts.
+  Microsoft sign-in with PKCE asks for `Mail.Read`, `User.Read` and `offline_access`; the callback checks the state
+  cookie like Google's, refuses a sign-in without mail access, and saves the address and refresh token
+  (`outlook_connections`, encrypted). Microsoft replaces the refresh token on each use, so each scan saves the new one.
+- **Scan** (`outlook_sync.py`): one Graph `$search` (KQL: `received>=` 6 months, the same keywords, not from Squirrel's
+  address) across every folder, leaving out Sent, Drafts, Deleted and Junk, so archived email counts. Immutable ids,
+  so moving an email doesn't make it new. Bodies come as text; each benefit links to the email in Outlook on the web.
+  Membership detection runs first (sender domains in KQL). Same 50-email cap, retries, user date and hourly limit.
+- On this computer Microsoft redirects to `localhost` (it refuses plain `http` elsewhere) and the server forwards the
+  browser to `127.0.0.1`, where the cookies are. Disconnecting deletes the token; Microsoft has no way for an app to
+  give up its own access, so the toast points to account.live.com/consent/Manage.
+- Also: an error from connecting Gmail or Outlook now shows as a toast when signed in (before, it only showed on the
+  signed-out page). "Outlook isn't allowed" in the app-password form now points to Connect Outlook.
+- **Tested** with Microsoft and the AI faked: connect (and the localhost hop), a bad state refused, a scan that skipped
+  a Sent email and added 2 with links, the rotated refresh token saved, a second scan with nothing new, disconnect.
+  A real Graph request with a fake token got Microsoft's "token could not be read" error. **Not yet tried with a real
+  Microsoft account.**
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
@@ -408,7 +463,7 @@ Replaced "paste an email" with connected sources:
 - **Time zone comes from the last device used.** Someone travelling gets reminders on that device's clock; there's no manual time-zone picker.
 - **Sending through a personal Gmail account** is limited (about 500 emails a day) and may be flagged as bulk mail. Fine for testers; use a sending service (e.g. Amazon SES, Postmark, Resend) with a custom domain before launch.
 - **Categories of benefits saved before 1 October were guessed** from their names (`_add_benefit_types` in `db.py`). Wrong guesses need fixing by hand with Edit.
-- **No Outlook yet** (see Owner decisions). IMAP only reads the inbox folder, not archives or other folders, and a server that can't search message text can't be scanned.
+- **Outlook not yet tried with a real Microsoft account** (needs the app registration). IMAP reads only the inbox (Gmail: All Mail), and a server that can't search message text can't be scanned.
 - **Long emails are cut to 8,000 characters** (a known limitation for long forwarded threads).
 - **SQLite, one server process.** Fine for testers; not built for many users or several servers.
 - **Answers appear all at once.** The skill recommends streaming them, which would need the server to stream.
@@ -419,17 +474,16 @@ Replaced "paste an email" with connected sources:
 
 ## Next steps (suggested order)
 
-1. **Set `OPENAI_API_KEY`** (see top), then try the full flow live: Google sign-in, Gmail scan, digest and assistant. Check the extraction quality with the chosen model. (Google client secret rotated and Gmail API enabled, 1 October 2026.)
+1. **Check extraction quality on real emails** with `gpt-5.4-mini`: compare scanned benefits and dates with the emails, and watch the review queue. Set a monthly budget limit in the OpenAI dashboard.
 2. **Run `git init`** and commit. `.gitignore` already excludes `.env`, `instance/` and `node_modules`. Also copy `instance/` (database + `secret.key`) somewhere safe from time to time.
-3. **Finish the Google checks** (see "Before anything else" step 2): one client secret listed, then sign in with Google and connect Gmail in the browser.
-4. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
-5. **Verify the card catalog and loyalty programs** against current terms and sending domains, and fix `cards.py` / `loyalty.py`. Add more programs (non-US hotels and airlines) as needed.
-6. **Custom cards and perks.**
-7. **Add tests:** pytest for `validate()`, auth, OAuth state handling, the period maths and the endpoints (Google + OpenAI mocked); React Testing Library for sign-in, connections and the new pages.
-8. **Automatic email scans** (daily, Gmail and IMAP), instead of only when the user presses "Scan inbox".
-9. **Outlook / Microsoft 365 connection** (owner asked to be reminded; see Owner decisions).
-10. **Email verification and account deletion** (deletion should also remove Gmail and IMAP data). (SMTP is set up: reset emails come from Squirrel Support <squirrelappsg@gmail.com>.)
-11. **Build an extraction eval** from real benefit emails.
-12. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
-13. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs too.
-14. **Before any public launch:** HTTPS hosting, Postgres, Google's restricted-scope verification and security assessment, a privacy policy, a proper email sending service with a custom domain (instead of a Gmail account), a one-click unsubscribe link in reminder emails, and moving the reminder check out of the web server (a scheduled job) so it keeps running across restarts and several servers.
+3. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
+4. **Verify the card catalog and loyalty programs** against current terms and sending domains, and fix `cards.py` / `loyalty.py`. Add more programs (non-US hotels and airlines) as needed.
+5. **Custom cards and perks.**
+6. **Add tests:** pytest for `validate()`, auth, OAuth state handling, the period maths and the endpoints (Google + OpenAI mocked); React Testing Library for sign-in, connections and the new pages.
+7. **Automatic email scans** (daily, Gmail and IMAP), instead of only when the user presses "Scan inbox".
+8. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026); the owner will test once they have an Outlook address.
+9. **Email verification and account deletion** (deletion should also remove Gmail and IMAP data). (SMTP is set up: reset emails come from Squirrel Support <squirrelappsg@gmail.com>.)
+10. **Build an extraction eval** from real benefit emails.
+11. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
+12. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs too.
+13. **Before any public launch:** HTTPS hosting, Postgres, Google's restricted-scope verification and security assessment, a privacy policy, a proper email sending service with a custom domain (instead of a Gmail account), a one-click unsubscribe link in reminder emails, and moving the reminder check out of the web server (a scheduled job) so it keeps running across restarts and several servers.

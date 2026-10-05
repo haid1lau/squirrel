@@ -8,7 +8,7 @@ import { Message } from './components/ui/Message'
 import { api, errorMessage, setUnauthorizedHandler, type Session } from './lib/api'
 import { usePath } from './lib/router'
 
-/** Reads ?notice= / ?auth_error= left by the Google redirect, then removes them from the URL. */
+/** Reads ?notice= / ?auth_error= left by a Google or Microsoft redirect, then removes them from the URL. */
 function takeRedirectParams() {
   const params = new URLSearchParams(window.location.search)
   const result = {
@@ -96,6 +96,7 @@ export function Root() {
       user={session.user}
       session={session}
       notice={redirect.notice}
+      authError={redirect.authError}
       onSessionChange={load}
       onSignOut={signOut}
     />

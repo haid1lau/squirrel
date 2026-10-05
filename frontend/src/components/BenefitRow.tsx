@@ -25,6 +25,7 @@ export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
     {
       card: 'Card perk',
       gmail: 'From Gmail',
+      outlook: 'From Outlook',
       imap: `From ${benefit.source_account ?? 'email'}`,
       loyalty: 'Membership found in your email',
       manual: 'Added by you',
@@ -85,7 +86,7 @@ export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
           className="col-span-full inline-flex min-h-11 items-center gap-1.5 justify-self-start text-sm font-semibold text-primary-text underline-offset-4 hover:underline"
         >
           <ExternalLink className="size-4" aria-hidden />
-          Open the email<span className="sr-only"> for {benefit.benefit_name} (opens Gmail in a new tab)</span>
+          Open the email<span className="sr-only"> for {benefit.benefit_name} (opens in a new tab)</span>
         </a>
       ) : null}
       {children ? <div className="col-span-full">{children}</div> : null}

@@ -66,6 +66,16 @@ CREATE TABLE IF NOT EXISTS gmail_connections (
     last_sync_at      TEXT
 );
 
+-- Outlook / Hotmail / Microsoft 365, read through Microsoft Graph (outlook_sync.py).
+-- Microsoft replaces the refresh token on each use, so it's saved again after every scan.
+CREATE TABLE IF NOT EXISTS outlook_connections (
+    user_id           TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    email             TEXT NOT NULL,
+    refresh_token_enc BLOB NOT NULL,
+    connected_at      TEXT NOT NULL,
+    last_sync_at      TEXT
+);
+
 -- Email accounts read over IMAP (Yahoo, iCloud, AOL, ...) with an app password.
 CREATE TABLE IF NOT EXISTS imap_accounts (
     id           TEXT PRIMARY KEY,
@@ -78,7 +88,7 @@ CREATE TABLE IF NOT EXISTS imap_accounts (
     UNIQUE (user_id, email)
 );
 
--- Emails sent to the AI model. message_id is Gmail's id, or
+-- Emails sent to the AI model. message_id is Gmail's id, 'outlook:<Graph id>' or
 -- 'imap:<account id>:<uidvalidity>:<uid>'. done = 1 once it's been read, so
 -- it's never read again; one the model keeps failing on is tried again by
 -- later scans until failures reaches scan_jobs.MAX_TRIES, then skipped.
@@ -100,14 +110,14 @@ CREATE TABLE IF NOT EXISTS user_cards (
 );
 
 -- data is an ExtractedBenefit (app.py) as JSON. source_ref identifies where a
--- benefit came from ('gmail:<message id>', 'imap:<account>:<uidvalidity>:<uid>',
+-- benefit came from ('gmail:<message id>', 'outlook:<Graph id>', 'imap:<account>:<uidvalidity>:<uid>',
 -- 'card:<card>:<perk>:<period end>' or 'manual:<id>')
 -- so the same benefit is never added twice. Dismissed rows are kept so they
 -- don't come back on the next scan.
 CREATE TABLE IF NOT EXISTS benefits (
     id         TEXT PRIMARY KEY,
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    source     TEXT NOT NULL,       -- 'gmail', 'imap', 'card' or 'manual' (added by the user)
+    source     TEXT NOT NULL,       -- 'gmail', 'outlook', 'imap', 'loyalty', 'card' or 'manual' (added by the user)
     source_ref TEXT NOT NULL,
     status     TEXT NOT NULL DEFAULT 'active',  -- 'active' or 'dismissed'
     data       TEXT NOT NULL,

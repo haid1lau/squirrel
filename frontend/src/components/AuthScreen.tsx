@@ -197,7 +197,7 @@ export function SignInView({ googleEnabled, initialError, onSignedIn, onBack }: 
               </Button>
               <p id="google-hint" className="text-xs text-ink-muted">
                 {googleEnabled
-                  ? 'Also connects your Gmail (read-only) so Squirrel can find benefit emails. You can untick that on Google’s screen.'
+                  ? 'Shares only your name and email address. Connect your email afterwards, on the Connections page.'
                   : 'Google sign-in isn’t set up on this server yet. Use an email and password for now.'}
               </p>
             </div>

@@ -202,6 +202,14 @@ def gmail_query(program: dict, activity: bool) -> str:
     return query
 
 
+def outlook_query(program: dict, activity: bool, since_date: date) -> str:
+    """KQL for Microsoft Graph's $search (microsoft_api.search_messages)."""
+    query = f"({' OR '.join(f'from:{d}' for d in program['domains'])}) AND received>={since_date.isoformat()}"
+    if activity:
+        query += f" AND ({' OR '.join(f'subject:{_quoted(p)}' for p in ACTIVITY_PHRASES)})"
+    return query
+
+
 def _imap_or(terms: list[str]) -> str:
     expr = terms[-1]
     for term in reversed(terms[:-1]):

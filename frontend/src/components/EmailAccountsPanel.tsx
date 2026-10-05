@@ -15,6 +15,11 @@ import { Skeleton } from './ui/Skeleton'
 // Where each provider hides its app passwords.
 const APP_PASSWORD_HELP = [
   {
+    name: 'Gmail',
+    steps: 'Turn on 2-Step Verification, then create an app password',
+    url: 'https://myaccount.google.com/apppasswords',
+  },
+  {
     name: 'Yahoo',
     steps: 'Account security → Generate app password',
     url: 'https://login.yahoo.com/account/security',
@@ -180,7 +185,7 @@ function ConnectForm({ onConnected, onCancel }: { onConnected: (a: ImapAccount) 
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
-          placeholder="you@yahoo.com"
+          placeholder="you@gmail.com"
           className={input}
         />
       </div>
@@ -242,7 +247,7 @@ function ConnectForm({ onConnected, onCancel }: { onConnected: (a: ImapAccount) 
           className={input}
         />
         <p id={`${id}-host-hint`} className="text-xs text-ink-muted">
-          Found automatically for Yahoo, iCloud, AOL, Fastmail, Zoho, GMX, mail.com and Yandex.
+          Found automatically for Gmail, Yahoo, iCloud, AOL, Fastmail, Zoho, GMX, mail.com and Yandex.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -266,7 +271,7 @@ function ConnectForm({ onConnected, onCancel }: { onConnected: (a: ImapAccount) 
   )
 }
 
-/** Email accounts other than Gmail, read over IMAP with an app password. */
+/** Email accounts (Gmail included) read over IMAP with an app password. */
 export function EmailAccountsPanel({ onScanFinished }: { onScanFinished: () => void }) {
   const toast = useToast()
   const [accounts, setAccounts] = useState<ImapAccount[] | null>(null)
@@ -301,7 +306,7 @@ export function EmailAccountsPanel({ onScanFinished }: { onScanFinished: () => v
     <Card as="article" aria-labelledby="imap-title" className="grid content-start">
       <CardHeader
         icon={AtSign}
-        title="Other email"
+        title="Email accounts"
         titleId="imap-title"
         action={accounts?.length ? <CountChip>{accounts.length} connected</CountChip> : null}
       />
@@ -320,7 +325,9 @@ export function EmailAccountsPanel({ onScanFinished }: { onScanFinished: () => v
         ) : (
           <>
             {accounts.length === 0 ? (
-              <p className="text-ink-muted">Connect Yahoo, iCloud, AOL or another email account.</p>
+              <p className="text-ink-muted">
+                Connect Gmail, Yahoo, iCloud, AOL or another email account with an app password.
+              </p>
             ) : (
               <ul className="divide-y divide-line">
                 {accounts.map((a) => (

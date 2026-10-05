@@ -28,7 +28,11 @@ REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
-SCOPES = ["openid", "email", "profile", GMAIL_SCOPE]
+# Sign-in asks only for the basic scopes, which need no restricted-scope
+# verification, so anyone can sign in once the app is published. Gmail's scope
+# is restricted (verification and a yearly security assessment), so it's only
+# asked for by "Connect Gmail", which stays limited to test users until then.
+SIGN_IN_SCOPES = ["openid", "email", "profile"]
 TIMEOUT_S = 20
 
 
@@ -56,23 +60,24 @@ def new_pkce_verifier() -> str:
     return secrets.token_urlsafe(64)
 
 
-def authorization_url(state: str, code_verifier: str, *, force_consent: bool, login_hint: Optional[str] = None) -> str:
+def authorization_url(state: str, code_verifier: str, *, gmail: bool, login_hint: Optional[str] = None) -> str:
     """
-    force_consent=True always shows Google's consent screen, which is the only
-    way to be sure Google returns a refresh token (needed to scan Gmail later).
-    Plain sign-in uses select_account, so returning users just pick an account.
+    gmail=True (Connect Gmail) adds read-only Gmail access and always shows
+    Google's consent screen, the only way to be sure Google returns a refresh
+    token (needed to scan Gmail later). Sign-in asks for the basic scopes and
+    uses select_account, so returning users just pick an account.
     """
     params = {
         "client_id": GOOGLE_CLIENT_ID,
         "redirect_uri": GOOGLE_REDIRECT_URI,
         "response_type": "code",
-        "scope": " ".join(SCOPES),
+        "scope": " ".join(SIGN_IN_SCOPES + ([GMAIL_SCOPE] if gmail else [])),
         "state": state,
         "code_challenge": _b64url(hashlib.sha256(code_verifier.encode()).digest()),
         "code_challenge_method": "S256",
         "access_type": "offline",
         "include_granted_scopes": "true",
-        "prompt": "consent" if force_consent else "select_account",
+        "prompt": "consent" if gmail else "select_account",
     }
     if login_hint:
         params["login_hint"] = login_hint

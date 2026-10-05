@@ -16,6 +16,7 @@ import traceback
 from typing import Optional
 from urllib.parse import quote
 
+import config
 import db
 import google_api
 import loyalty
@@ -31,6 +32,8 @@ SEARCH_QUERY = (
     f"newer_than:{scan_jobs.SEARCH_DAYS}d -in:chats -in:sent -in:drafts ("
     + " OR ".join(_gmail_term(w) for w in scan_jobs.KEYWORDS)
     + ")"
+    # Squirrel's own reminders list benefits too; they aren't new ones.
+    + (f" -from:{config.MAIL_FROM_ADDRESS}" if config.MAIL_FROM_ADDRESS else "")
 )
 
 

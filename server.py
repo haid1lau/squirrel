@@ -43,6 +43,8 @@ import google_api
 import imap_sync
 import limits
 import mailer
+import microsoft_api
+import outlook_sync
 import reminders
 from app import CATEGORIES, MODEL, TYPES, ExtractedBenefit, ExtractionError, describe_ai_error
 from BenefitIntelligence import ask_about_benefits, build_weekly_digest
@@ -257,6 +259,10 @@ class Handler(BaseHTTPRequestHandler):
             self._google_start(query)
         elif path == "/api/auth/google/callback":
             self._google_callback(query)
+        elif path == "/api/auth/microsoft/start":
+            self._microsoft_start()
+        elif path == "/api/auth/microsoft/callback":
+            self._microsoft_callback(query)
         elif path == "/api/benefits":
             if user := self._require_user():
                 today = user_today(user["id"])
@@ -273,6 +279,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, {
                     "connection": gmail_sync.connection(user["id"]),
                     "scan": gmail_sync.status(user["id"]),
+                })
+        elif path == "/api/outlook/status":
+            if user := self._require_user():
+                self._send_json(HTTPStatus.OK, {
+                    "connection": outlook_sync.connection(user["id"]),
+                    "scan": outlook_sync.status(user["id"]),
                 })
         elif path == "/api/imap":
             if user := self._require_user():
@@ -337,6 +349,16 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/gmail/disconnect":
             gmail_sync.disconnect(user["id"])
             self._send_json(HTTPStatus.OK, {"ok": True})
+        elif path == "/api/outlook/scan":
+            if self._over_limit(user, "scan"):
+                return
+            try:
+                self._send_json(HTTPStatus.OK, outlook_sync.start_scan(user["id"]))
+            except microsoft_api.MicrosoftError as e:
+                self._error(HTTPStatus.BAD_REQUEST, str(e))
+        elif path == "/api/outlook/disconnect":
+            outlook_sync.disconnect(user["id"])
+            self._send_json(HTTPStatus.OK, {"ok": True, "remove_access_url": microsoft_api.PERSONAL_APPS_URL})
         elif path == "/api/imap":
             self._imap_action(lambda: imap_sync.add_account(
                 user["id"], str(data.get("email") or ""), str(data.get("password") or ""), str(data.get("host") or "")))
@@ -380,6 +402,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, {
             "user": user,
             "google_enabled": config.GOOGLE_ENABLED,
+            "microsoft_enabled": config.MICROSOFT_ENABLED,
             "gmail": gmail_sync.connection(user["id"]) if user else None,
         })
 
@@ -421,9 +444,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _google_start(self, query: dict) -> None:
         """
-        Browser navigation (not fetch). purpose=login signs in (and connects
-        Gmail if the user allows it); purpose=connect adds Gmail to the
-        signed-in account.
+        Browser navigation (not fetch). purpose=login signs in (name and email
+        only); purpose=connect adds Gmail to the signed-in account.
         """
         if not config.GOOGLE_ENABLED:
             self._redirect("/?auth_error=" + quote("Google sign-in isn't set up on this server yet."))
@@ -444,7 +466,7 @@ class Handler(BaseHTTPRequestHandler):
                 (state, purpose, user["id"] if user else None, verifier, db.now_iso()),
             )
         url = google_api.authorization_url(
-            state, verifier, force_consent=purpose == "connect", login_hint=user["email"] if user else None
+            state, verifier, gmail=purpose == "connect", login_hint=user["email"] if user else None
         )
         # The same state in a cookie ties the callback to this browser, so
         # nobody can finish a sign-in they started in someone else's browser.
@@ -503,6 +525,69 @@ class Handler(BaseHTTPRequestHandler):
         else:
             notice, page = "signed_in", "/"
         self._redirect(f"{page}?notice={notice}", tuple(cookies))
+
+    def _microsoft_start(self) -> None:
+        """Browser navigation (not fetch): "Connect Outlook" for the signed-in user."""
+        user = self._current_user()
+        if not config.MICROSOFT_ENABLED or user is None:
+            self._redirect("/connections?auth_error=" + quote(
+                "Outlook isn't set up on this server yet." if user else "Sign in first, then connect Outlook."))
+            return
+        state = secrets.token_urlsafe(32)
+        verifier = microsoft_api.new_pkce_verifier()
+        with db.connect() as conn:
+            cutoff = (datetime.now(timezone.utc) - OAUTH_STATE_MAX_AGE).isoformat(timespec="seconds")
+            conn.execute("DELETE FROM oauth_states WHERE created_at < ?", (cutoff,))
+            conn.execute(
+                "INSERT INTO oauth_states (state, purpose, user_id, code_verifier, created_at) VALUES (?, ?, ?, ?, ?)",
+                (state, "outlook", user["id"], verifier, db.now_iso()),
+            )
+        # As with Google, the state in a cookie ties the callback to this browser.
+        self._redirect(microsoft_api.authorization_url(state, verifier, login_hint=user["email"]),
+                       (_cookie(OAUTH_STATE_COOKIE, state, max_age=int(OAUTH_STATE_MAX_AGE.total_seconds()),
+                                path="/api/auth/microsoft"),))
+
+    def _microsoft_callback(self, query: dict) -> None:
+        # On this computer Microsoft sends the browser to localhost (see config); the
+        # cookies belong to APP_URL's host, so continue there.
+        app = urlsplit(config.APP_URL)
+        if (self.headers.get("Host") or "") != app.netloc:
+            self._redirect(config.APP_URL + self.path)
+            return
+
+        clear_state = _cookie(OAUTH_STATE_COOKIE, "", max_age=0, path="/api/auth/microsoft")
+
+        def fail(message: str) -> None:
+            self._redirect("/connections?auth_error=" + quote(message), (clear_state,))
+
+        if query.get("error"):
+            fail("Connecting Outlook was cancelled." if query["error"] == "access_denied"
+                 else f"Microsoft sign-in failed: {query.get('error_description') or query['error']}"[:300])
+            return
+
+        state = query.get("state", "")
+        cookie_state = self._cookie_value(OAUTH_STATE_COOKIE)
+        with db.connect() as conn:
+            row = conn.execute("SELECT * FROM oauth_states WHERE state = ? AND purpose = 'outlook'",
+                               (state,)).fetchone()
+            conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+        if (row is None or not cookie_state or not secrets.compare_digest(cookie_state, state)
+                or datetime.fromisoformat(row["created_at"]) < datetime.now(timezone.utc) - OAUTH_STATE_MAX_AGE):
+            fail("That link expired. Press Connect Outlook again.")
+            return
+
+        try:
+            tokens = microsoft_api.exchange_code(query.get("code", ""), row["code_verifier"])
+            granted = {s.lower() for s in tokens.get("scope", "").split()}
+            if not tokens.get("refresh_token") or not any(s.endswith("mail.read") for s in granted):
+                fail("Outlook wasn't connected: Squirrel needs permission to read your email. Try again.")
+                return
+            address = microsoft_api.mailbox_address(tokens["access_token"])
+        except microsoft_api.MicrosoftError as e:
+            fail(str(e))
+            return
+        outlook_sync.save_connection(row["user_id"], address, tokens["refresh_token"])
+        self._redirect("/connections?notice=outlook_connected", (clear_state,))
 
     # --- benefits ---------------------------------------------------------------
 

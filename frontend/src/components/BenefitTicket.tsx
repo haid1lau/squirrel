@@ -37,6 +37,7 @@ function expiryLine(b: Benefit) {
 const SOURCES: Record<Benefit['source'], string> = {
   card: 'Card perk',
   gmail: 'Gmail',
+  outlook: 'Outlook',
   imap: 'Email',
   loyalty: 'Membership found in your email',
   manual: 'Added by you',
@@ -178,7 +179,7 @@ export function TicketDetail({ benefit, children, className }: TicketDetailProps
               className="inline-flex min-h-11 items-center gap-1.5 justify-self-start text-sm font-semibold text-primary-text underline-offset-4 hover:underline"
             >
               <ExternalLink className="size-4" aria-hidden />
-              Open the email<span className="sr-only"> for {benefit.benefit_name} (opens Gmail in a new tab)</span>
+              Open the email<span className="sr-only"> for {benefit.benefit_name} (opens in a new tab)</span>
             </a>
           ) : null}
           {benefit.needs_review ? (

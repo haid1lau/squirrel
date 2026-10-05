@@ -5,10 +5,11 @@ export type ExpiryConfidence = 'explicit' | 'computed' | 'ambiguous' | 'unknown'
 export interface Benefit {
   id: string
   /**
-   * imap: another email account (Yahoo, iCloud, ...). loyalty: a membership spotted from who emails
+   * outlook: Outlook, Hotmail or Microsoft 365 (Connect Outlook).
+   * imap: an email account read with an app password (Gmail, Yahoo, iCloud, ...). loyalty: a membership spotted from who emails
    * the user. manual: typed in on the All Benefits page.
    */
-  source: 'gmail' | 'imap' | 'loyalty' | 'card' | 'manual'
+  source: 'gmail' | 'outlook' | 'imap' | 'loyalty' | 'card' | 'manual'
   is_benefit: boolean
   benefit_name: string
   provider: string
@@ -126,9 +127,13 @@ export interface GmailConnection {
   last_sync_at: string | null
 }
 
+/** Connect Outlook: the same shape as a Gmail connection. */
+export type OutlookConnection = GmailConnection
+
 export interface Session {
   user: User | null
   google_enabled: boolean
+  microsoft_enabled: boolean
   gmail: GmailConnection | null
 }
 
@@ -236,6 +241,10 @@ export const api = {
   startScan: () => request<ScanStatus>('/api/gmail/scan', post({})),
   disconnectGmail: () => request<{ ok: true }>('/api/gmail/disconnect', post({})),
 
+  outlookStatus: () => request<{ connection: OutlookConnection | null; scan: ScanStatus }>('/api/outlook/status'),
+  scanOutlook: () => request<ScanStatus>('/api/outlook/scan', post({})),
+  disconnectOutlook: () => request<{ ok: true; remove_access_url: string }>('/api/outlook/disconnect', post({})),
+
   imapAccounts: () => request<ImapAccount[]>('/api/imap'),
   connectImap: (email: string, password: string, host: string) =>
     request<ImapAccount>('/api/imap', post({ email, password, host })),
@@ -252,5 +261,6 @@ export const api = {
 
 /** Full-page navigations (not fetch): Google needs to show its own pages. */
 export const googleUrl = (purpose: 'login' | 'connect') => `/api/auth/google/start?purpose=${purpose}`
+export const MICROSOFT_CONNECT_URL = '/api/auth/microsoft/start'
 
 export const errorMessage = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.')
