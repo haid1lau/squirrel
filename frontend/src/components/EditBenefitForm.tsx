@@ -14,6 +14,8 @@ interface EditBenefitFormProps {
   onCancel: () => void
   /** 'li' when the form replaces a row in a list. */
   as?: 'li' | 'div'
+  /** A new benefit's code, filled in (from scanning a code). */
+  initialCode?: string
 }
 
 function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: ReactNode }) {
@@ -29,7 +31,7 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
 }
 
 /** Adds a benefit, or edits one when `benefit` is given. */
-export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: EditBenefitFormProps) {
+export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li', initialCode }: EditBenefitFormProps) {
   const id = useId()
   const [form, setForm] = useState<BenefitEdit>({
     benefit_name: benefit?.benefit_name ?? '',
@@ -40,7 +42,7 @@ export function EditBenefitForm({ benefit, onSaved, onCancel, as: Tag = 'li' }: 
     points: benefit?.points != null ? String(benefit.points) : '',
     expiry_date: benefit?.expiry_date ?? '',
     terms_summary: benefit?.terms_summary ?? '',
-    code: benefit?.code ?? '',
+    code: benefit?.code ?? initialCode ?? '',
   })
   // A benefit is worth either a value ("$50") or a points balance; memberships default to points.
   const [worth, setWorth] = useState<'value' | 'points'>(

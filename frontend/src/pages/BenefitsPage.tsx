@@ -1,8 +1,9 @@
-import { ChevronDown, CircleCheck, Inbox, ListFilter, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
+import { ChevronDown, CircleCheck, Inbox, ListFilter, Plus, RefreshCw, RotateCcw, ScanLine, Search } from 'lucide-react'
 import { Fragment, useMemo, useRef, useState } from 'react'
 import { BenefitActions } from '../components/BenefitActions'
 import { TicketDetail, TicketStub } from '../components/BenefitTicket'
 import { EditBenefitForm } from '../components/EditBenefitForm'
+import { ScanCodeDialog } from '../components/ScanCodeDialog'
 import { Link } from '../components/Link'
 import { Button } from '../components/ui/Button'
 import { Card, CardHeader, CountChip } from '../components/ui/Card'
@@ -133,6 +134,10 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
   const [filters, setFilters] = useState<Filters>(filtersFromUrl)
   const [editing, setEditing] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  // A code from the scanner, filled in on the Add form ('' when there's none to fill in).
+  const [addCode, setAddCode] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const scanButtonRef = useRef<HTMLButtonElement>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -226,17 +231,52 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
             </p>
           ) : null}
         </div>
-        {!adding ? (
+        <div className="flex flex-wrap gap-2">
           <Button
-            ref={addButtonRef}
-            variant="primary"
-            icon={<Plus className="size-4" aria-hidden />}
-            onClick={() => setAdding(true)}
+            ref={scanButtonRef}
+            icon={<ScanLine className="size-4" aria-hidden />}
+            onClick={() => setScanning(true)}
+            disabled={!benefits}
           >
-            Add a benefit
+            Scan a code
           </Button>
-        ) : null}
+          {!adding ? (
+            <Button
+              ref={addButtonRef}
+              variant="primary"
+              icon={<Plus className="size-4" aria-hidden />}
+              onClick={() => {
+                setAddCode('')
+                setAdding(true)
+              }}
+            >
+              Add a benefit
+            </Button>
+          ) : null}
+        </div>
       </div>
+
+      {scanning && benefits ? (
+        <ScanCodeDialog
+          benefits={benefits}
+          onClose={() => {
+            setScanning(false)
+            requestAnimationFrame(() => scanButtonRef.current?.focus())
+          }}
+          onShow={(b) => {
+            // Clear the filters so the benefit is in the list, then open it.
+            setFilters(NO_FILTERS)
+            setSelectedId(b.id)
+            requestAnimationFrame(() =>
+              document.getElementById(`benefit-${b.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+            )
+          }}
+          onAdd={(code) => {
+            setAddCode(code)
+            setAdding(true)
+          }}
+        />
+      ) : null}
 
       {adding ? (
         <Card as="section" aria-labelledby="add-title">
@@ -246,7 +286,10 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
             balance.
           </p>
           <EditBenefitForm
+            // A new code from the scanner starts a fresh form.
+            key={addCode}
             as="div"
+            initialCode={addCode}
             onCancel={() => {
               setAdding(false)
               requestAnimationFrame(() => addButtonRef.current?.focus())
@@ -463,7 +506,13 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
                 </Fragment>
               ))}
             </div>
-            {wide && selected ? <div className="sticky top-24">{detail(selected)}</div> : null}
+            {/* Stays in view while the list scrolls; a long ticket scrolls inside it, so its buttons stay reachable.
+                The padding keeps the ticket's shadow from being cut off at the scroll edges. */}
+            {wide && selected ? (
+              <div className="sticky top-24 -m-3 max-h-[calc(100dvh-7.5rem)] overflow-y-auto overscroll-contain p-3 [scrollbar-width:thin]">
+                {detail(selected)}
+              </div>
+            ) : null}
           </div>
         )}
       </section>
