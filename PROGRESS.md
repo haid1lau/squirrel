@@ -65,7 +65,7 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 - **Frontend dev and Google:** after Google sign-in you land on the built app at `:8000`, not the Vite dev server. Password sign-in works on both.
 - `benefits.json` is from the old paste-an-email version and is **no longer used**. Safe to delete.
 - **Restart after backend changes.** The server doesn't reload code; an old server keeps serving old code while the frontend is rebuilt (this caused a blank app once). Stop it with `lsof -ti:8000 | xargs kill`.
-- **Python:** use Anaconda Python (`/opt/anaconda3/bin/python3`), which has `cryptography`. Plain `python3` in some shells is a python.org 3.13 without it. The OpenAI calls use `urllib`, so no `openai` package is needed.
+- **Python:** 3.10 or newer; dependencies are in `requirements.txt` (`cryptography`, `tzdata`): `python3 -m pip install -r requirements.txt`. On this Mac, use Anaconda Python (`/opt/anaconda3/bin/python3`), which has them. Plain `python3` in some shells is a python.org 3.13 without it. The OpenAI calls use `urllib`, so no `openai` package is needed.
 - **Node:** v26 via Homebrew (`brew install node`).
 
 ---
@@ -110,6 +110,9 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | GET | `/api/auth/google/start?purpose=login\|connect` | Browser redirect to Google |
 | GET | `/api/auth/google/callback` | Google redirects back here |
 | GET | `/api/auth/microsoft/start`, `/api/auth/microsoft/callback` | Connect Outlook (browser redirects to and from Microsoft) |
+| POST | `/api/auth/verify-email` (body: `token`) | Confirms the address a link was sent to. Public: works signed in or not |
+| POST | `/api/account/verification` | Sends a new confirmation link (3 an hour) |
+| POST | `/api/account/email` (body: `email`) | Fixes a mistyped address before it's confirmed, and sends a link to the new one |
 | POST | `/api/account/delete` (body: `password`, or `email` for Google-only accounts) | Deletes the account and all its data; clears the session cookie |
 | GET | `/api/outlook/status` | Outlook connection and latest scan |
 | POST | `/api/outlook/scan`, `/api/outlook/disconnect` | Scan (**calls OpenAI**; counts toward the 10 scans an hour); disconnect (benefits found are kept) |
@@ -472,12 +475,68 @@ verification both need these).
   user, revoked the Gmail token and cleared the session, other users untouched; Google-only confirmation by email.
   Screenshots of the privacy page, homepage section, footer, account menu and dialog.
 
+### 26. Scan a code, and a sharper tab icon (5 October 2026)
+
+- **Scan a code** on All Benefits (`ScanCodeDialog.tsx`): reads a QR code or barcode with the camera, from a photo, or
+  typed in, and says which saved benefit it belongs to. Matching (`lib/codes.ts`) is on the device: letters and digits
+  only, any case, so "bday 7q2k" matches BDAY-7Q2K; codes of 5+ characters also match inside a longer scan, like a
+  redemption link ending in the code. A link shows its website and an "Open the link" button. No match offers "Add as
+  a new benefit" with the code filled in. A code only holds text, so unknown codes can't be looked up anywhere.
+- Reading uses `barcode-detector` (ponyfill, MIT) over ZXing WebAssembly, pinned with `zxing-wasm` 3.1.3. Both load
+  only when the scanner opens (43 KB script + 1.1 MB `.wasm`), and the `.wasm` is served by Squirrel, not a CDN.
+  The camera needs https (or `127.0.0.1` on this computer), so phones need Squirrel hosted; photos and typing work
+  anywhere. The camera stops whenever the dialog closes or shows a result.
+- **Tested** in headless Chrome with a fake camera: the stream starts; typed "bday 7q2k" matched; a QR photo of
+  `https://shop.example.com/redeem?c=BDAY-7Q2K` decoded, matched and showed the link; an unknown code opened Add with
+  the code filled in; "Show it in my list" opened the right ticket. **Not yet tried with a real camera on a phone.**
+- Tab icon: `favicon.ico` (16, 32, 48 px) and `favicon-32.png` made from the 512 px app icon, with `?v=2` on the links
+  so browsers fetch the new icon instead of a saved one.
+
+### 27. Security fixes: account pre-hijacking, headers, timeouts; requirements.txt (6 October 2026)
+
+- **Pre-hijacking fixed.** Before, someone could sign up with another person's address and a password of their own,
+  wait for that person to sign in with Google (which linked to the same account), and then read their benefits with
+  the password. Now `users.email_verified_at` records when the address was proven (Google said it's verified, or a
+  reset link sent to it was used; existing Google-linked accounts were marked on upgrade). Linking Google to a
+  password account whose address was never proven removes the password and signs out its sessions; the page says so
+  ("password_removed" notice) and "Forgot password" sets a new one. This column is also the start of email
+  verification (next steps).
+- **Security headers** on every response (`SECURITY_HEADERS` in `server.py`): `X-Frame-Options: DENY`, `nosniff`,
+  `Referrer-Policy: same-origin`, `Cross-Origin-Opener-Policy`, a `Permissions-Policy` that allows only the camera
+  (for the scanner), and HSTS once `APP_URL` is https. The page gets a **Content-Security-Policy**: Squirrel itself
+  plus Google Fonts, inline scripts allowed by hash (worked out from the built `index.html`, so the theme script
+  keeps working if edited), `'unsafe-inline'` styles for React style attributes, `'wasm-unsafe-eval'` for the
+  scanner, `frame-ancestors 'none'`. **Adding a new outside script, font or API means updating the CSP.**
+- **30-second timeout** on idle connections (`Handler.timeout`), so stalled clients can't hold threads.
+- **`requirements.txt`**: `cryptography` and `tzdata` (for `zoneinfo` on systems without time-zone data); Python 3.10+.
+- **Tested:** on a database copy, the attacker's password and session stopped working while a verified owner kept
+  theirs; headers present on pages and the API; a stalled connection closed after 30 s; in Chrome with the CSP, the
+  homepage, Google font, theme script, dashboard, privacy page and the scanner (WebAssembly) all worked with no
+  violations, and framing Squirrel from another site was refused while a control page framed fine.
+
+### 28. Email verification (soft gate) (6 October 2026)
+
+- Sign-up emails a **"Confirm your email for Squirrel"** link (`/verify-email#token=…`, one use, 24 hours, token
+  hashed in `email_verifications`, after `#` so it stays out of logs). People use Squirrel straight away; until they
+  confirm, a banner offers **Resend** (3 an hour) and **Wrong address?** (password accounts, before confirming), and
+  **no reminder emails go to the address** (`reminders.run_due` skips unconfirmed users). That stops Squirrel
+  emailing someone whose address a stranger typed in.
+- The link works signed in or not; a link sent to an old address stops working once the address is changed.
+  Confirming also means adding Google sign-in later keeps the password (section 27). Google sign-in and reset links
+  already count as confirming.
+- **Owner's choice:** the 7 accounts that existed on 6 October 2026 were all marked as confirmed (one-time, when the
+  `email_verifications` table was first created).
+- **Tested** on a database copy with email captured: sign-up sent one link; reminders skipped the address; resend
+  limit; changing the address killed the old link and sent a new one; a taken address refused; the link confirmed
+  once and not twice; Google sign-in afterwards kept the password. In Chrome: banner, "Wrong address?" form, the
+  confirmation page (token removed from the address bar) and the banner gone afterwards.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
 - **Google sign-in and Gmail scanning not yet tried end to end in a browser.** The OAuth client and Gmail API access are verified; the flows were tested with Google mocked.
 - **Card perk catalog is hand-written sample data**, last checked mid-2025, and US cards only. Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
-- **No email verification.** (Password reset and account deletion are done; see sections 11 and 25.)
+- **Unconfirmed accounts are kept forever.** Email verification is a soft gate (section 28); accounts that never confirm aren't deleted automatically.
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
 - **No real browser click-through yet.** Checks so far are screenshots plus API tests with `curl`.
@@ -505,8 +564,7 @@ verification both need these).
 6. **Add tests:** pytest for `validate()`, auth, OAuth state handling, the period maths and the endpoints (Google + OpenAI mocked); React Testing Library for sign-in, connections and the new pages.
 7. **Automatic email scans** (daily, Gmail and IMAP), instead of only when the user presses "Scan inbox".
 8. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026); the owner will test once they have an Outlook address.
-9. **Email verification** (SMTP is set up: reset emails come from Squirrel Support <squirrelappsg@gmail.com>).
-10. **Build an extraction eval** from real benefit emails.
-11. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
-12. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs too.
-13. **Before any public launch:** HTTPS hosting, Postgres, Google's restricted-scope verification and security assessment, a privacy policy, a proper email sending service with a custom domain (instead of a Gmail account), a one-click unsubscribe link in reminder emails, and moving the reminder check out of the web server (a scheduled job) so it keeps running across restarts and several servers.
+9. **Build an extraction eval** from real benefit emails.
+10. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
+11. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs too.
+12. **Before any public launch:** HTTPS hosting, Postgres, Google's restricted-scope verification and security assessment, a privacy policy, a proper email sending service with a custom domain (instead of a Gmail account), a one-click unsubscribe link in reminder emails, and moving the reminder check out of the web server (a scheduled job) so it keeps running across restarts and several servers.

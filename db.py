@@ -34,12 +34,25 @@ CREATE TABLE IF NOT EXISTS users (
     name          TEXT,
     password_hash TEXT,             -- NULL for Google-only accounts
     google_sub    TEXT UNIQUE,      -- Google's stable account id
-    created_at    TEXT NOT NULL
+    created_at    TEXT NOT NULL,
+    -- When the user proved they own the address (Google said so, or they used
+    -- a reset link sent to it). NULL means never: anyone could have typed it.
+    email_verified_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,    -- sha256 of the cookie value; the raw token is never stored
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL
+);
+
+-- Email confirmation links (auth.create_verification_link). Like reset links,
+-- only the token's sha256 is stored. email is the address the link was sent
+-- to, so a link stops working if the address is changed afterwards.
+CREATE TABLE IF NOT EXISTS email_verifications (
+    token_hash TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email      TEXT NOT NULL,
     expires_at TEXT NOT NULL
 );
 
@@ -176,19 +189,31 @@ def new_id() -> str:
 def init() -> None:
     INSTANCE_DIR.mkdir(mode=0o700, exist_ok=True)
     with connect() as conn:
+        verification_is_new = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'email_verifications'").fetchone() is None
         conn.executescript(SCHEMA)
         _add_columns(conn, "reminder_settings", {"categories": "TEXT NOT NULL DEFAULT '{}'", "timezone": "TEXT"})
+        if _add_columns(conn, "users", {"email_verified_at": "TEXT"}):
+            # Accounts made before this column: Google had verified the address of any linked to Google.
+            conn.execute("UPDATE users SET email_verified_at = created_at WHERE google_sub IS NOT NULL")
+        if verification_is_new:
+            # Email verification arrived on 6 October 2026. The owner knows everyone who signed up
+            # before then, so their accounts count as confirmed.
+            conn.execute("UPDATE users SET email_verified_at = COALESCE(email_verified_at, created_at)")
         _add_columns(conn, "processed_emails",
                      {"done": "INTEGER NOT NULL DEFAULT 1", "failures": "INTEGER NOT NULL DEFAULT 0"})
         _add_benefit_types(conn)
 
 
-def _add_columns(conn: sqlite3.Connection, table: str, columns: dict[str, str]) -> None:
-    """Adds columns that a database made by an older version doesn't have yet."""
+def _add_columns(conn: sqlite3.Connection, table: str, columns: dict[str, str]) -> bool:
+    """Adds columns that a database made by an older version doesn't have yet. True if any were added."""
     existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+    added = False
     for name, definition in columns.items():
         if name not in existing:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+            added = True
+    return added
 
 
 # Words that suggest a spending category, checked in this order. Used once, to

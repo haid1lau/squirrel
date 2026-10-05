@@ -37,3 +37,6 @@ def send(to: str, subject: str, text: str) -> None:
         if config.SMTP_USER:
             smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
         smtp.send_message(message)
+    # Shortened address: enough to tell "sent" from "never tried" without logging who it was.
+    name, _, domain = to.partition("@")
+    print(f"  Email sent to {name[:2]}…@{domain}: {subject}", flush=True)

@@ -20,6 +20,7 @@ perks of credit cards they add. Data is stored in instance/benefitapp.db.
 
 import config  # noqa: F401  (loads .env before anything reads the environment)
 
+import base64
 import hashlib
 import json
 import mimetypes
@@ -57,7 +58,47 @@ OAUTH_STATE_MAX_AGE = timedelta(minutes=10)
 
 _BENEFIT_FIELDS = {f.name for f in fields(ExtractedBenefit)}
 # Client-side routes of the React app; each serves index.html.
-FRONTEND_ROUTES = {"/benefits", "/assistant", "/connections", "/reset-password", "/privacy", "/terms"}
+FRONTEND_ROUTES = {"/benefits", "/assistant", "/connections", "/reset-password", "/verify-email", "/privacy", "/terms"}
+
+
+# Sent with every response. Framing is blocked so another site can't trick
+# people into clicking Delete account or Disconnect inside an invisible frame.
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",  # never send page URLs (which can hold OAuth codes) to other sites
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Permissions-Policy": "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+}
+if config.SECURE_COOKIES:  # only once Squirrel is served over https
+    SECURITY_HEADERS["Strict-Transport-Security"] = "max-age=31536000"
+
+_INLINE_SCRIPT = re.compile(rb"<script>(.*?)</script>", re.S)
+
+
+def content_security_policy(html: bytes) -> str:
+    """
+    The CSP for the page: everything from Squirrel itself, plus Google Fonts.
+    Inline scripts are allowed by their hash, read from the built page, so the
+    theme script in index.html keeps working if it changes. 'unsafe-inline'
+    styles are for React's style attributes; 'wasm-unsafe-eval' is for the
+    code scanner's WebAssembly.
+    """
+    hashes = " ".join(f"'sha256-{base64.b64encode(hashlib.sha256(m).digest()).decode()}'"
+                      for m in _INLINE_SCRIPT.findall(html))
+    return "; ".join([
+        "default-src 'self'",
+        f"script-src 'self' 'wasm-unsafe-eval' {hashes}".strip(),
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: blob:",
+        "connect-src 'self'",
+        "media-src 'self' blob:",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ])
 
 
 def to_benefit(record: dict) -> ExtractedBenefit:
@@ -131,6 +172,24 @@ def _send_reset_email(address: str, link: str) -> None:
         print(f"  Couldn't send the password reset email: {type(e).__name__}: {e}", flush=True)
 
 
+def _send_verification_email(address: str, link: str) -> None:
+    try:
+        mailer.send(address, "Confirm your email for Squirrel", (
+            "Welcome to Squirrel! Confirm this is your address so Squirrel can send you expiry reminders:\n"
+            f"{link}\n\n"
+            f"The link works once, for {auth.VERIFY_LINK_HOURS} hours.\n\n"
+            "If you didn't sign up for Squirrel, ignore this email: nothing will be sent to you."))
+    except Exception as e:  # noqa: BLE001 - a failed send must not crash the server
+        print(f"  Couldn't send the confirmation email: {type(e).__name__}: {e}", flush=True)
+
+
+def send_verification(user_id: str) -> None:
+    """Emails a confirmation link in the background (raises auth.AuthError when too many were sent)."""
+    link = auth.create_verification_link(user_id)
+    if link:
+        threading.Thread(target=_send_verification_email, args=link, daemon=True).start()
+
+
 def _cookie(name: str, value: str, *, max_age: int, path: str = "/") -> str:
     parts = [f"{name}={value}", f"Path={path}", f"Max-Age={max_age}", "HttpOnly", "SameSite=Lax"]
     if config.SECURE_COOKIES:
@@ -144,6 +203,14 @@ def _cookie(name: str, value: str, *, max_age: int, path: str = "/") -> str:
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "Squirrel/2.0"
+    # Seconds a connection may sit without sending anything, so slow or stalled
+    # clients can't hold server threads open forever.
+    timeout = 30
+
+    def end_headers(self) -> None:
+        for name, value in SECURITY_HEADERS.items():
+            self.send_header(name, value)
+        super().end_headers()
 
     # --- helpers --------------------------------------------------------------
 
@@ -327,6 +394,12 @@ class Handler(BaseHTTPRequestHandler):
             self._forgot_password(data)
         elif path == "/api/auth/reset":
             self._reset_password(data)
+        elif path == "/api/auth/verify-email":
+            # Public: the link may be opened on a device that isn't signed in.
+            try:
+                self._send_json(HTTPStatus.OK, {"user": auth.verify_email(str(data.get("token") or ""))})
+            except auth.AuthError as e:
+                self._error(HTTPStatus.BAD_REQUEST, str(e))
         elif path == "/api/auth/logout":
             auth.end_session(self._session_token())
             self._send_json(HTTPStatus.OK, {"ok": True}, (_cookie(auth.SESSION_COOKIE, "", max_age=0),))
@@ -334,6 +407,21 @@ class Handler(BaseHTTPRequestHandler):
             return
         elif path == "/api/account/delete":
             self._delete_account(user, data)
+        elif path == "/api/account/verification":
+            try:
+                send_verification(user["id"])
+            except auth.AuthError as e:
+                self._error(HTTPStatus.TOO_MANY_REQUESTS, str(e))
+                return
+            self._send_json(HTTPStatus.OK, {"ok": True, "email_enabled": config.EMAIL_ENABLED})
+        elif path == "/api/account/email":
+            try:
+                changed = auth.change_unverified_email(user["id"], str(data.get("email") or ""))
+                send_verification(user["id"])
+            except auth.AuthError as e:
+                self._error(HTTPStatus.BAD_REQUEST, str(e))
+                return
+            self._send_json(HTTPStatus.OK, {"user": changed})
         elif path == "/api/ask":
             self._ask(user, data)
         elif path == "/api/benefits":
@@ -415,6 +503,7 @@ class Handler(BaseHTTPRequestHandler):
         except auth.AuthError as e:
             self._error(HTTPStatus.BAD_REQUEST, str(e))
             return
+        send_verification(user["id"])
         self._send_json(HTTPStatus.OK, {"user": user}, (self._session_cookie(user["id"]),))
 
     def _login(self, data: dict) -> None:
@@ -515,7 +604,7 @@ class Handler(BaseHTTPRequestHandler):
         cookies = [clear_state]
         if row["purpose"] == "login":
             try:
-                user = auth.find_or_create_google_user(
+                user, password_removed = auth.find_or_create_google_user(
                     claims["sub"], claims["email"], bool(claims.get("email_verified")), claims.get("name"))
             except auth.AuthError as e:
                 fail(str(e))
@@ -535,6 +624,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         else:
             notice, page = "signed_in", "/"
+        if row["purpose"] == "login" and password_removed:
+            notice = "password_removed"
         self._redirect(f"{page}?notice={notice}", tuple(cookies))
 
     def _microsoft_start(self) -> None:
@@ -845,6 +936,8 @@ class Handler(BaseHTTPRequestHandler):
         # forever; index.html must always be re-checked to pick up new builds.
         cache = "public, max-age=31536000, immutable" if path.startswith("/assets/") else "no-cache"
         self.send_header("Cache-Control", cache)
+        if target.suffix == ".html":
+            self.send_header("Content-Security-Policy", content_security_policy(body))
         self.end_headers()
         self.wfile.write(body)
 

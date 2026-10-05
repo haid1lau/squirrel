@@ -193,7 +193,8 @@ def run_due(now: Optional[datetime] = None) -> int:
     """Sends every reminder that's due. Returns how many emails were sent."""
     now = now or datetime.now(timezone.utc)
     with db.connect() as conn:
-        users = conn.execute("SELECT id, email, name FROM users").fetchall()
+        # Only confirmed addresses: an unconfirmed one may belong to someone else.
+        users = conn.execute("SELECT id, email, name FROM users WHERE email_verified_at IS NOT NULL").fetchall()
 
     emails = 0
     for user in users:

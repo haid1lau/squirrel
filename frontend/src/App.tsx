@@ -7,6 +7,7 @@ import { Link } from './components/Link'
 import { Woodland } from './components/Woodland'
 import { useBenefits } from './hooks/useBenefits'
 import type { Session, User } from './lib/api'
+import { VerifyEmailBanner } from './components/VerifyEmailBanner'
 import { PAGES, usePath } from './lib/router'
 import { useToast } from './lib/toast'
 import { AssistantPage } from './pages/AssistantPage'
@@ -18,6 +19,8 @@ const NOTICES: Record<string, string> = {
   gmail_connected: 'Gmail connected. Scan your inbox to find benefits.',
   outlook_connected: 'Outlook connected. Scan your mailbox to find benefits.',
   signed_in: 'Signed in with Google.',
+  password_removed:
+    'Signed in with Google. For your security, the password on this account was removed: sign in with Google, or use “Forgot password” to set a new one.',
 }
 
 interface AppProps {
@@ -91,6 +94,7 @@ export default function App({
       <Header path={path} user={user} onSignOut={onSignOut} onAccountDeleted={onAccountDeleted} />
 
       <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 pt-8 pb-16 sm:px-6 lg:px-8">
+        {!user.email_verified ? <VerifyEmailBanner user={user} onUserChange={onSessionChange} /> : null}
         {path === '/benefits' ? (
           <BenefitsPage benefits={benefits} error={error} onRetry={reload} onUpdated={upsert} onRemoved={remove} />
         ) : path === '/assistant' ? (

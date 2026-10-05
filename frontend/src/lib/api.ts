@@ -119,6 +119,8 @@ export interface User {
   email: string
   name: string | null
   has_password: boolean
+  /** False until the user clicks the link emailed at sign-up; no reminders are sent until then. */
+  email_verified: boolean
 }
 
 export interface GmailConnection {
@@ -224,6 +226,9 @@ export const api = {
   /** Password for accounts that have one; otherwise the email address, typed out. */
   deleteAccount: (confirm: { password: string } | { email: string }) =>
     request<{ ok: true }>('/api/account/delete', post(confirm)),
+  verifyEmail: (token: string) => request<{ user: User }>('/api/auth/verify-email', post({ token })),
+  resendVerification: () => request<{ ok: true; email_enabled: boolean }>('/api/account/verification', post({})),
+  changeEmail: (email: string) => request<{ user: User }>('/api/account/email', post({ email })),
   forgotPassword: (email: string) => request<{ ok: true; email_enabled: boolean }>('/api/auth/forgot', post({ email })),
   resetPassword: (token: string, password: string) =>
     request<{ user: User }>('/api/auth/reset', post({ token, password })),

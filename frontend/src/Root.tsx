@@ -4,6 +4,7 @@ import App from './App'
 import { Landing } from './components/landing/Landing'
 import { LegalPage } from './components/LegalPage'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
+import { VerifyEmailScreen } from './components/VerifyEmailScreen'
 import { Button } from './components/ui/Button'
 import { Message } from './components/ui/Message'
 import { api, errorMessage, setUnauthorizedHandler, type Session } from './lib/api'
@@ -63,6 +64,11 @@ export function Root() {
   // Public whether or not someone is signed in: Google's and Microsoft's reviews link to them.
   if (path === '/privacy' || path === '/terms') {
     return <LegalPage page={path === '/privacy' ? 'privacy' : 'terms'} />
+  }
+
+  // Opened from the confirmation email: works whether or not someone is signed in here.
+  if (path === '/verify-email') {
+    return <VerifyEmailScreen onDone={load} />
   }
 
   // Opened from a reset email: shown whether or not someone is signed in here.

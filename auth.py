@@ -34,6 +34,9 @@ _SCRYPT = {"n": 2**14, "r": 8, "p": 1}
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 RESET_LINK_MINUTES = 60
+VERIFY_LINK_HOURS = 24
+MAX_VERIFY_EMAILS = 3  # confirmation emails per account per hour
+_verify_requests: dict[str, list[float]] = defaultdict(list)
 MAX_RESET_EMAILS = 3  # per email address per hour
 _reset_requests: dict[str, list[float]] = defaultdict(list)
 
@@ -89,6 +92,8 @@ def public_user(row) -> dict:
         "email": row["email"],
         "name": row["name"],
         "has_password": row["password_hash"] is not None,
+        # Until it's confirmed, no reminder emails go to the address (see create_verification_link).
+        "email_verified": row["email_verified_at"] is not None,
     }
 
 
@@ -161,31 +166,48 @@ def login(email: str, password: str) -> dict:
     return public_user(row)
 
 
-def find_or_create_google_user(sub: str, email: str, email_verified: bool, name: Optional[str]) -> dict:
+def find_or_create_google_user(sub: str, email: str, email_verified: bool,
+                               name: Optional[str]) -> tuple[dict, bool]:
     """
     Signs in the account linked to this Google id. If there is none yet, links
     an existing account with the same email (only when Google has verified the
-    address), or creates a new Google-only account.
+    address), or creates a new Google-only account. Returns (user, whether a
+    password was removed).
+
+    Linking to a password account whose address was never proven removes the
+    password and signs out its sessions. Otherwise someone could sign up with
+    another person's address first, wait for them to sign in with Google (and
+    connect Gmail), then read their benefits with the password they chose.
+    The real owner can set a new password with "Forgot password".
     """
     email = _normalize_email(email)
     with db.connect() as conn:
         row = conn.execute("SELECT * FROM users WHERE google_sub = ?", (sub,)).fetchone()
         if row:
-            return public_user(row)
+            return public_user(row), False
 
+        password_removed = False
         row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         if row:
             if not email_verified:
                 raise AuthError("Google hasn't verified this email address, so it can't be linked to your account.")
-            conn.execute("UPDATE users SET google_sub = ? WHERE id = ?", (sub, row["id"]))
+            if row["password_hash"] is not None and row["email_verified_at"] is None:
+                conn.execute("UPDATE users SET password_hash = NULL WHERE id = ?", (row["id"],))
+                conn.execute("DELETE FROM sessions WHERE user_id = ?", (row["id"],))
+                conn.execute("DELETE FROM password_resets WHERE user_id = ?", (row["id"],))
+                password_removed = True
+            conn.execute("UPDATE users SET google_sub = ?, email_verified_at = COALESCE(email_verified_at, ?) "
+                         "WHERE id = ?", (sub, db.now_iso(), row["id"]))
             user_id = row["id"]
         else:
             user_id = db.new_id()
             conn.execute(
-                "INSERT INTO users (id, email, name, google_sub, created_at) VALUES (?, ?, ?, ?, ?)",
-                (user_id, email, (name or "").strip()[:100] or None, sub, db.now_iso()),
+                "INSERT INTO users (id, email, name, google_sub, created_at, email_verified_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (user_id, email, (name or "").strip()[:100] or None, sub, db.now_iso(),
+                 db.now_iso() if email_verified else None),
             )
-        return public_user(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone())
+        return public_user(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()), password_removed
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +259,9 @@ def reset_password(token: str, password: str) -> dict:
         ).fetchone()
         if row is None:
             raise AuthError("This reset link has expired or was already used. Ask for a new one.")
-        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(password), row["id"]))
+        # The link was emailed to the address, so using it proves the user owns it.
+        conn.execute("UPDATE users SET password_hash = ?, email_verified_at = COALESCE(email_verified_at, ?) "
+                     "WHERE id = ?", (hash_password(password), db.now_iso(), row["id"]))
         conn.execute("DELETE FROM password_resets WHERE user_id = ?", (row["id"],))
         conn.execute("DELETE FROM sessions WHERE user_id = ?", (row["id"],))
         row = conn.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone()
@@ -321,3 +345,73 @@ def delete_user(user_id: str) -> None:
     with db.connect() as conn:
         conn.execute("DELETE FROM oauth_states WHERE user_id = ?", (user_id,))  # no foreign key
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
+# ---------------------------------------------------------------------------
+# Email verification
+# ---------------------------------------------------------------------------
+# A soft gate: people use Squirrel straight after signing up, but no reminder
+# emails go to the address until they've clicked the emailed link. That stops
+# Squirrel emailing someone whose address a stranger typed in. Google sign-in
+# and password reset links also count as confirming the address.
+
+def create_verification_link(user_id: str) -> Optional[tuple[str, str]]:
+    """
+    (address, link) to email so the user can confirm their address, or None if
+    it's already confirmed. Raises AuthError when too many were asked for.
+    """
+    with db.connect() as conn:
+        row = conn.execute("SELECT email, email_verified_at FROM users WHERE id = ?", (user_id,)).fetchone()
+    if row is None or row["email_verified_at"] is not None:
+        return None
+    cutoff = time.monotonic() - 3600
+    with _failed_lock:
+        recent = [t for t in _verify_requests[user_id] if t > cutoff]
+        if len(recent) >= MAX_VERIFY_EMAILS:
+            _verify_requests[user_id] = recent
+            raise AuthError("That's a lot of emails. Check your inbox and spam folder, or try again in an hour.")
+        _verify_requests[user_id] = recent + [time.monotonic()]
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(hours=VERIFY_LINK_HOURS)
+    with db.connect() as conn:
+        conn.execute("DELETE FROM email_verifications WHERE user_id = ? OR expires_at < ?", (user_id, db.now_iso()))
+        conn.execute("INSERT INTO email_verifications (token_hash, user_id, email, expires_at) VALUES (?, ?, ?, ?)",
+                     (_token_hash(token), user_id, row["email"], expires.isoformat(timespec="seconds")))
+    # After "#", like reset links, so the token never reaches server logs or other sites.
+    return row["email"], f"{config.APP_URL}/verify-email#token={token}"
+
+
+def verify_email(token: str) -> dict:
+    """Confirms the address a link was sent to. Returns the user; raises AuthError for a bad or old link."""
+    with db.connect() as conn:
+        row = conn.execute(
+            "SELECT users.* FROM email_verifications JOIN users ON users.id = email_verifications.user_id "
+            "WHERE email_verifications.token_hash = ? AND email_verifications.expires_at > ? "
+            "AND email_verifications.email = users.email",
+            (_token_hash(token or ""), db.now_iso()),
+        ).fetchone()
+        if row is None:
+            raise AuthError("This link has expired or was already used. Sign in and ask for a new one.")
+        conn.execute("UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?",
+                     (db.now_iso(), row["id"]))
+        conn.execute("DELETE FROM email_verifications WHERE user_id = ?", (row["id"],))
+        return public_user(conn.execute("SELECT * FROM users WHERE id = ?", (row["id"],)).fetchone())
+
+
+def change_unverified_email(user_id: str, new_email: str) -> dict:
+    """Fixes a mistyped address before it's confirmed. Old links stop working. Returns the user."""
+    new_email = _normalize_email(new_email)
+    with db.connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if row is None:
+            raise AuthError("This account no longer exists.")
+        if row["email_verified_at"] is not None:
+            raise AuthError("Your address is already confirmed, so it can't be changed here.")
+        if row["google_sub"] is not None:
+            raise AuthError("This account signs in with Google, so its address comes from Google.")
+        if new_email != row["email"] and conn.execute(
+                "SELECT 1 FROM users WHERE email = ?", (new_email,)).fetchone():
+            raise AuthError("Another account already uses that address.")
+        conn.execute("UPDATE users SET email = ? WHERE id = ?", (new_email, user_id))
+        conn.execute("DELETE FROM email_verifications WHERE user_id = ?", (user_id,))
+        return public_user(conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone())

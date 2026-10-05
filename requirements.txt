@@ -1,0 +1,9 @@
+# Squirrel's Python dependencies. Everything else is in the standard library.
+# Python 3.10 or newer (developed and tested on 3.14).
+#
+#   python3 -m pip install -r requirements.txt
+
+# Encrypts stored Gmail/Outlook tokens and IMAP app passwords (Fernet).
+cryptography>=42,<50
+# Time-zone data for zoneinfo, for systems without it (Windows, slim Linux images).
+tzdata>=2024.1
