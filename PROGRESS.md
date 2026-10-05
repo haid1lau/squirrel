@@ -498,7 +498,7 @@ verification both need these).
 ## Next steps (suggested order)
 
 1. **Check extraction quality on real emails** with `gpt-5.4-mini`: compare scanned benefits and dates with the emails, and watch the review queue. Set a monthly budget limit in the OpenAI dashboard.
-2. **Run `git init`** and commit. `.gitignore` already excludes `.env`, `instance/` and `node_modules`. Also copy `instance/` (database + `secret.key`) somewhere safe from time to time.
+2. **Code is on GitHub** (private): https://github.com/haid1lau/squirrel, default branch `main` (5 October 2026). `.env` and `instance/` are ignored and never committed, so back up `instance/` (database + `secret.key`) separately from time to time.
 3. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
 4. **Verify the card catalog and loyalty programs** against current terms and sending domains, and fix `cards.py` / `loyalty.py`. Add more programs (non-US hotels and airlines) as needed.
 5. **Custom cards and perks.**
