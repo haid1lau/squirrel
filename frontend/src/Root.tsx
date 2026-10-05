@@ -2,6 +2,7 @@ import { LoaderCircle, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import App from './App'
 import { Landing } from './components/landing/Landing'
+import { LegalPage } from './components/LegalPage'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
 import { Button } from './components/ui/Button'
 import { Message } from './components/ui/Message'
@@ -59,6 +60,11 @@ export function Root() {
     }
   }
 
+  // Public whether or not someone is signed in: Google's and Microsoft's reviews link to them.
+  if (path === '/privacy' || path === '/terms') {
+    return <LegalPage page={path === '/privacy' ? 'privacy' : 'terms'} />
+  }
+
   // Opened from a reset email: shown whether or not someone is signed in here.
   if (path === '/reset-password') {
     return <ResetPasswordScreen onSignedIn={load} />
@@ -99,6 +105,10 @@ export function Root() {
       authError={redirect.authError}
       onSessionChange={load}
       onSignOut={signOut}
+      onAccountDeleted={() => {
+        window.history.replaceState(null, '', '/')
+        setSession((s) => s && { ...s, user: null, gmail: null })
+      }}
     />
   )
 }

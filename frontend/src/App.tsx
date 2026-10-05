@@ -28,9 +28,19 @@ interface AppProps {
   authError: string | null
   onSessionChange: () => void
   onSignOut: () => Promise<void>
+  /** The account was deleted (its session is already gone). */
+  onAccountDeleted: () => void
 }
 
-export default function App({ user, session, notice, authError, onSessionChange, onSignOut }: AppProps) {
+export default function App({
+  user,
+  session,
+  notice,
+  authError,
+  onSessionChange,
+  onSignOut,
+  onAccountDeleted,
+}: AppProps) {
   const toast = useToast()
   // Loaded once here so every page shares the same list and sees each other's edits.
   const { benefits, error, reload, upsert, remove } = useBenefits()
@@ -78,7 +88,7 @@ export default function App({ user, session, notice, authError, onSessionChange,
       >
         Skip to main content
       </a>
-      <Header path={path} email={user.email} onSignOut={onSignOut} />
+      <Header path={path} user={user} onSignOut={onSignOut} onAccountDeleted={onAccountDeleted} />
 
       <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 pt-8 pb-16 sm:px-6 lg:px-8">
         {path === '/benefits' ? (

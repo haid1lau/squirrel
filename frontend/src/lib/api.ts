@@ -221,6 +221,9 @@ export const api = {
     request<{ user: User }>('/api/auth/register', post({ email, password, name })),
   login: (email: string, password: string) => request<{ user: User }>('/api/auth/login', post({ email, password })),
   logout: () => request<{ ok: true }>('/api/auth/logout', post({})),
+  /** Password for accounts that have one; otherwise the email address, typed out. */
+  deleteAccount: (confirm: { password: string } | { email: string }) =>
+    request<{ ok: true }>('/api/account/delete', post(confirm)),
   forgotPassword: (email: string) => request<{ ok: true; email_enabled: boolean }>('/api/auth/forgot', post({ email })),
   resetPassword: (token: string, password: string) =>
     request<{ user: User }>('/api/auth/reset', post({ token, password })),

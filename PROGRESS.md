@@ -82,6 +82,7 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 | `google_api.py` | Google OAuth (PKCE) and the Gmail API calls, using `urllib` only. |
 | `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step (an email the AI fails on 3 times is skipped). |
 | `limits.py` | Per-user hourly caps on the requests that call OpenAI: 30 questions, 10 digests, 10 scans. In memory. |
+| `account.py` | Deleting an account: confirm, refuse while a scan runs, revoke Gmail, remove Outlook and IMAP, then delete the user (everything else cascades). |
 | `microsoft_api.py` | Microsoft sign-in (PKCE) and the Microsoft Graph mail calls for Outlook, using `urllib` only. |
 | `outlook_sync.py` | Outlook scan: Graph search (KQL, every folder but Sent, Drafts, Deleted and Junk) → `scan_jobs`. Same limits as Gmail. |
 | `gmail_sync.py` | Gmail scan: Gmail search → `scan_jobs`. Up to 50 new emails per scan. |
@@ -109,6 +110,7 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | GET | `/api/auth/google/start?purpose=login\|connect` | Browser redirect to Google |
 | GET | `/api/auth/google/callback` | Google redirects back here |
 | GET | `/api/auth/microsoft/start`, `/api/auth/microsoft/callback` | Connect Outlook (browser redirects to and from Microsoft) |
+| POST | `/api/account/delete` (body: `password`, or `email` for Google-only accounts) | Deletes the account and all its data; clears the session cookie |
 | GET | `/api/outlook/status` | Outlook connection and latest scan |
 | POST | `/api/outlook/scan`, `/api/outlook/disconnect` | Scan (**calls OpenAI**; counts toward the 10 scans an hour); disconnect (benefits found are kept) |
 | GET | `/api/benefits` | User's active benefits (card perks refreshed for the current period) |
@@ -449,12 +451,33 @@ Replaced "paste an email" with connected sources:
   A real Graph request with a fake token got Microsoft's "token could not be read" error. **Not yet tried with a real
   Microsoft account.**
 
+### 25. Account deletion, privacy policy, terms and a reviewable homepage (5 October 2026)
+
+Step 2 of getting Connect Gmail and Connect Outlook open to everyone (Google verification and Microsoft publisher
+verification both need these).
+- **Delete account** in the account menu opens a dialog. Confirmed with the password, or for Google-only accounts the
+  email typed out; wrong passwords count toward the sign-in limit. Refused while a scan runs. Revokes Gmail at Google,
+  removes Outlook and IMAP connections, then deletes the user: every table cascades (sessions, reset links,
+  connections, processed emails, cards, benefits, reminders, assistant history, digest cache), plus `oauth_states`.
+- **`/privacy` and `/terms`** (`LegalPage.tsx`), public whether signed in or not. The privacy policy describes exactly
+  what the code collects and keeps (extracted details, not emails; sender and subject only for memberships), OpenAI
+  processing, Google's Limited Use statement (verbatim) with its four commitments, who else handles data, security,
+  retention and deletion, rights, children (13+) and changes. Terms: as-is free service, "check dates yourself",
+  fair use, liability, Singapore law. **Draft, not legal advice: the owner should read both, and ideally have them
+  checked.** Update them whenever data handling changes (dates are in `LegalPage.tsx`).
+- **Homepage** (the landing page): a "How Squirrel uses your email" section (read-only, only likely benefit emails,
+  processed by AI and not kept, removable), a footer with privacy, terms and contact, and "By continuing, you agree
+  to the terms and privacy policy" on the sign-in screen. The account menu links to both too.
+- **Tested** on a copy of the database: a wrong password refused; the right one left nothing in any table for that
+  user, revoked the Gmail token and cleared the session, other users untouched; Google-only confirmation by email.
+  Screenshots of the privacy page, homepage section, footer, account menu and dialog.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
 - **Google sign-in and Gmail scanning not yet tried end to end in a browser.** The OAuth client and Gmail API access are verified; the flows were tested with Google mocked.
 - **Card perk catalog is hand-written sample data**, last checked mid-2025, and US cards only. Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
-- **No email verification or account deletion.** (Password reset is done; see section 11.)
+- **No email verification.** (Password reset and account deletion are done; see sections 11 and 25.)
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
 - **No real browser click-through yet.** Checks so far are screenshots plus API tests with `curl`.
@@ -482,7 +505,7 @@ Replaced "paste an email" with connected sources:
 6. **Add tests:** pytest for `validate()`, auth, OAuth state handling, the period maths and the endpoints (Google + OpenAI mocked); React Testing Library for sign-in, connections and the new pages.
 7. **Automatic email scans** (daily, Gmail and IMAP), instead of only when the user presses "Scan inbox".
 8. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026); the owner will test once they have an Outlook address.
-9. **Email verification and account deletion** (deletion should also remove Gmail and IMAP data). (SMTP is set up: reset emails come from Squirrel Support <squirrelappsg@gmail.com>.)
+9. **Email verification** (SMTP is set up: reset emails come from Squirrel Support <squirrelappsg@gmail.com>).
 10. **Build an extraction eval** from real benefit emails.
 11. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
 12. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs too.

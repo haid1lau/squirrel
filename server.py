@@ -35,6 +35,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
 from urllib.parse import parse_qs, quote, urlsplit
 
+import account
 import auth
 import cards
 import db
@@ -56,7 +57,7 @@ OAUTH_STATE_MAX_AGE = timedelta(minutes=10)
 
 _BENEFIT_FIELDS = {f.name for f in fields(ExtractedBenefit)}
 # Client-side routes of the React app; each serves index.html.
-FRONTEND_ROUTES = {"/benefits", "/assistant", "/connections", "/reset-password"}
+FRONTEND_ROUTES = {"/benefits", "/assistant", "/connections", "/reset-password", "/privacy", "/terms"}
 
 
 def to_benefit(record: dict) -> ExtractedBenefit:
@@ -331,6 +332,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, {"ok": True}, (_cookie(auth.SESSION_COOKIE, "", max_age=0),))
         elif not (user := self._require_user()):
             return
+        elif path == "/api/account/delete":
+            self._delete_account(user, data)
         elif path == "/api/ask":
             self._ask(user, data)
         elif path == "/api/benefits":
@@ -441,6 +444,14 @@ class Handler(BaseHTTPRequestHandler):
             self._error(HTTPStatus.BAD_REQUEST, str(e))
             return
         self._send_json(HTTPStatus.OK, {"user": user}, (self._session_cookie(user["id"]),))
+
+    def _delete_account(self, user: dict, data: dict) -> None:
+        try:
+            account.delete_account(user["id"], str(data.get("password") or ""), str(data.get("email") or ""))
+        except (auth.AuthError, account.AccountError) as e:
+            self._error(HTTPStatus.BAD_REQUEST, str(e))
+            return
+        self._send_json(HTTPStatus.OK, {"ok": True}, (_cookie(auth.SESSION_COOKIE, "", max_age=0),))
 
     def _google_start(self, query: dict) -> None:
         """

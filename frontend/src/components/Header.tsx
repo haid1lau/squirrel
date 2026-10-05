@@ -9,12 +9,15 @@ import {
   Moon,
   Plug,
   Sun,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import type { User } from '../lib/api'
 import { cn } from '../lib/cn'
 import { PAGES } from '../lib/router'
 import { setTheme, useTheme } from '../lib/theme'
+import { DeleteAccountDialog } from './DeleteAccountDialog'
 import { Link } from './Link'
 
 const PAGE_ICONS: Record<string, LucideIcon> = {
@@ -42,9 +45,17 @@ function ThemeToggle() {
   )
 }
 
-/** The signed-in email; opens a small panel with "Sign out". */
-function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Promise<void> }) {
+interface AccountMenuProps {
+  user: User
+  onSignOut: () => Promise<void>
+  onAccountDeleted: () => void
+}
+
+/** The signed-in email; opens a small panel with "Sign out", the policies and "Delete account". */
+function AccountMenu({ user, onSignOut, onAccountDeleted }: AccountMenuProps) {
+  const email = user.email
   const [open, setOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const panelId = useId()
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -128,7 +139,43 @@ function AccountMenu({ email, onSignOut }: { email: string; onSignOut: () => Pro
             )}
             {signingOut ? 'Signing out…' : 'Sign out'}
           </button>
+          <div className="h-px bg-line" aria-hidden />
+          <div className="flex flex-wrap gap-x-3 px-2.5 text-xs text-ink-muted">
+            <a
+              href="/privacy"
+              className="inline-flex min-h-9 items-center underline-offset-4 hover:text-ink hover:underline"
+            >
+              Privacy policy
+            </a>
+            <a
+              href="/terms"
+              className="inline-flex min-h-9 items-center underline-offset-4 hover:text-ink hover:underline"
+            >
+              Terms
+            </a>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              setDeleting(true)
+            }}
+            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-ink-muted transition-colors duration-150 hover:bg-danger-soft hover:text-danger"
+          >
+            <Trash2 className="size-4" aria-hidden />
+            Delete account
+          </button>
         </div>
+      ) : null}
+      {deleting ? (
+        <DeleteAccountDialog
+          user={user}
+          onClose={() => {
+            setDeleting(false)
+            triggerRef.current?.focus()
+          }}
+          onDeleted={onAccountDeleted}
+        />
       ) : null}
     </div>
   )
@@ -161,11 +208,12 @@ function useNavPill(path: string) {
 
 interface HeaderProps {
   path: string
-  email: string
+  user: User
   onSignOut: () => Promise<void>
+  onAccountDeleted: () => void
 }
 
-export function Header({ path, email, onSignOut }: HeaderProps) {
+export function Header({ path, user, onSignOut, onAccountDeleted }: HeaderProps) {
   const { listRef, pill } = useNavPill(path)
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-header backdrop-blur-2xl backdrop-saturate-150">
@@ -227,7 +275,7 @@ export function Header({ path, email, onSignOut }: HeaderProps) {
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <ThemeToggle />
-          <AccountMenu email={email} onSignOut={onSignOut} />
+          <AccountMenu user={user} onSignOut={onSignOut} onAccountDeleted={onAccountDeleted} />
         </div>
       </div>
     </header>

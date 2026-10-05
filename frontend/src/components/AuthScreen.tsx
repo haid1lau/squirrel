@@ -301,7 +301,15 @@ export function SignInView({ googleEnabled, initialError, onSignedIn, onBack }: 
         style={{ '--d': '760ms' } as CSSProperties}
         className="mt-[18px] text-center text-[13px] text-ink-muted"
       >
-        Squirrel never asks for card numbers or bank logins.
+        Squirrel never asks for card numbers or bank logins. By continuing, you agree to the{' '}
+        <a href="/terms" className="underline underline-offset-4 hover:text-ink">
+          terms
+        </a>{' '}
+        and{' '}
+        <a href="/privacy" className="underline underline-offset-4 hover:text-ink">
+          privacy policy
+        </a>
+        .
       </p>
     </div>
   )

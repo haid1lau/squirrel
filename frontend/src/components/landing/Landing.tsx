@@ -115,6 +115,27 @@ const TILES = [
 const tileBg = (h: number) => `oklch(var(--land-tile-l) var(--land-tile-c) ${h})`
 const tileInk = (h: number) => `oklch(var(--land-tile-ink-l) 0.13 ${h})`
 
+// Plain answers about email access, on the homepage as Google's and
+// Microsoft's app reviews expect. Keep in step with the privacy policy.
+const DATA_FACTS = [
+  {
+    title: 'Read-only',
+    body: 'Squirrel can’t send, delete, move or change your email, or mark it as read.',
+  },
+  {
+    title: 'Only likely benefit emails',
+    body: 'It searches the last 6 months for emails that mention vouchers, memberships or expiry dates, and reads only those.',
+  },
+  {
+    title: 'Processed by AI, not kept',
+    body: 'Those emails are sent to OpenAI’s API to pull out the benefit and its date. Squirrel keeps what it found, not the email, and your data isn’t used to train AI models.',
+  },
+  {
+    title: 'Yours to remove',
+    body: 'Disconnect an email account at any time. Delete your account and everything Squirrel holds for you goes with it.',
+  },
+]
+
 const PROMISE =
   'Squirrel never asks for card numbers or bank logins. Gmail access is read-only, and you can revoke it any time.'
 
@@ -227,6 +248,30 @@ export function Landing({ googleEnabled, initialError, onSignedIn }: LandingProp
                   ))}
                 </p>
               </section>
+              <section aria-labelledby="data-title" className="grid gap-6 pb-24">
+                <h2
+                  id="data-title"
+                  data-reveal="up"
+                  className="m-0 text-[clamp(28px,3.4vw,40px)] leading-[1.1] font-extrabold tracking-[-0.03em]"
+                >
+                  How Squirrel uses your email
+                </h2>
+                <dl className="m-0 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                  {DATA_FACTS.map((f, i) => (
+                    <div key={f.title} data-reveal="up" style={delay(i * 80)} className="grid gap-1">
+                      <dt className="text-lg font-bold">{f.title}</dt>
+                      <dd className="m-0 text-ink-muted">{f.body}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p data-reveal="up" className="m-0 text-ink-muted">
+                  The details are in the{' '}
+                  <a href="/privacy" className="font-semibold text-ink underline underline-offset-4">
+                    privacy policy
+                  </a>
+                  .
+                </p>
+              </section>
               <section className="flex flex-col items-start gap-6 pt-10 pb-36">
                 <h2
                   data-reveal="up"
@@ -246,6 +291,29 @@ export function Landing({ googleEnabled, initialError, onSignedIn }: LandingProp
               </section>
             </div>
           </div>
+          <footer className="border-t border-line">
+            <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-6 gap-y-1 px-4 py-6 text-sm text-ink-muted sm:px-8">
+              <span>© 2026 Squirrel</span>
+              <a
+                href="/privacy"
+                className="inline-flex min-h-11 items-center underline-offset-4 hover:text-ink hover:underline"
+              >
+                Privacy policy
+              </a>
+              <a
+                href="/terms"
+                className="inline-flex min-h-11 items-center underline-offset-4 hover:text-ink hover:underline"
+              >
+                Terms of service
+              </a>
+              <a
+                href="mailto:squirrelappsg@gmail.com"
+                className="inline-flex min-h-11 items-center underline-offset-4 hover:text-ink hover:underline"
+              >
+                squirrelappsg@gmail.com
+              </a>
+            </div>
+          </footer>
         </main>
       )}
     </div>

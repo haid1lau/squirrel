@@ -283,3 +283,41 @@ def end_session(token: Optional[str]) -> None:
     if token:
         with db.connect() as conn:
             conn.execute("DELETE FROM sessions WHERE token_hash = ?", (_token_hash(token),))
+
+
+# ---------------------------------------------------------------------------
+# Account deletion
+# ---------------------------------------------------------------------------
+
+def confirm_deletion(user_id: str, password: str, typed_email: str) -> None:
+    """
+    Checks the person deleting an account is its owner: their password, or for
+    Google-only accounts (no password) their email address typed out.
+    Raises AuthError. Wrong passwords count towards the sign-in limit.
+    """
+    with db.connect() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if row is None:
+        raise AuthError("This account no longer exists.")
+    if row["password_hash"] is None:
+        if (typed_email or "").strip().lower() != row["email"].lower():
+            raise AuthError("Type your email address exactly as shown to confirm.")
+        return
+    if _too_many_failures(row["email"]):
+        raise AuthError("Too many wrong passwords. Wait 15 minutes and try again.")
+    if not verify_password(password or "", row["password_hash"]):
+        _record_failure(row["email"])
+        raise AuthError("That password isn't right.")
+
+
+def delete_user(user_id: str) -> None:
+    """
+    Deletes the account and, through ON DELETE CASCADE, everything stored for
+    it: sessions, reset links, email connections (tokens and app passwords),
+    processed-email records, cards, benefits, reminder settings and history,
+    assistant history and the cached digest. Disconnect email accounts first
+    (account.delete_account does) so Google access is revoked too.
+    """
+    with db.connect() as conn:
+        conn.execute("DELETE FROM oauth_states WHERE user_id = ?", (user_id,))  # no foreign key
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
