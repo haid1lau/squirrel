@@ -1,7 +1,7 @@
 import { ChevronDown, CircleCheck, Inbox, ListFilter, Plus, RefreshCw, RotateCcw, Search } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { BenefitActions } from '../components/BenefitActions'
-import { BenefitRow } from '../components/BenefitRow'
+import { TicketDetail, TicketStub } from '../components/BenefitTicket'
 import { EditBenefitForm } from '../components/EditBenefitForm'
 import { Link } from '../components/Link'
 import { Button } from '../components/ui/Button'
@@ -9,12 +9,13 @@ import { Card, CardHeader, CountChip } from '../components/ui/Card'
 import { Message } from '../components/ui/Message'
 import { Skeleton } from '../components/ui/Skeleton'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { api, CATEGORIES, errorMessage, TYPES, type Benefit } from '../lib/api'
 import { cn } from '../lib/cn'
 import { capitalize, formatDate } from '../lib/format'
 import { fieldClass } from '../lib/styles'
 import { useToast } from '../lib/toast'
-import { isArchived } from '../lib/usage'
+import { isArchived, usageKind } from '../lib/usage'
 
 const STATUSES = {
   all: 'Any status',
@@ -26,11 +27,32 @@ const STATUSES = {
 } as const
 type Status = keyof typeof STATUSES
 
+/** The chips above the tickets: quick filters by what kind of benefit it is. */
+const KINDS = {
+  all: 'All',
+  voucher: 'Vouchers',
+  credit: 'Card credits',
+  points: 'Points',
+  membership: 'Memberships',
+  subscription: 'Subscriptions',
+  review: 'To review',
+} as const
+type Kind = keyof typeof KINDS
+
+function matchesKind(b: Benefit, kind: Kind) {
+  if (kind === 'all') return true
+  if (kind === 'review') return b.needs_review
+  if (kind === 'voucher') return b.type === 'voucher'
+  if (kind === 'credit' || kind === 'points') return usageKind(b) === kind
+  return b.type === kind && usageKind(b) !== 'points'
+}
+
 const SORTS = { expiry: 'Expiry, soonest first', name: 'Name, A to Z', provider: 'Provider, A to Z' } as const
 type Sort = keyof typeof SORTS
 
 interface Filters {
   query: string
+  kind: Kind
   type: string
   category: string
   source: string
@@ -38,7 +60,7 @@ interface Filters {
   sort: Sort
 }
 
-const NO_FILTERS: Filters = { query: '', type: 'all', category: 'all', source: 'all', status: 'all', sort: 'expiry' }
+const NO_FILTERS: Filters = { query: '', kind: 'all', type: 'all', category: 'all', source: 'all', status: 'all', sort: 'expiry' }
 
 function matchesStatus(b: Benefit, status: Status) {
   const days = b.days_until_expiry
@@ -58,6 +80,18 @@ function matchesStatus(b: Benefit, status: Status) {
   }
 }
 
+/** Filters from the address: the dashboard's tiles link to ?status=soon and ?kind=credit. */
+function filtersFromUrl(): Filters {
+  const params = new URLSearchParams(window.location.search)
+  const status = params.get('status')
+  const kind = params.get('kind')
+  return {
+    ...NO_FILTERS,
+    status: status && status in STATUSES ? (status as Status) : 'all',
+    kind: kind && kind in KINDS ? (kind as Kind) : 'all',
+  }
+}
+
 function applyFilters(benefits: Benefit[], f: Filters) {
   const words = f.query.toLowerCase().split(/\s+/).filter(Boolean)
   const byName = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' })
@@ -67,6 +101,7 @@ function applyFilters(benefits: Benefit[], f: Filters) {
       if (f.category !== 'all' && b.category !== f.category) return false
       if (f.source !== 'all' && b.source !== f.source) return false
       if (!matchesStatus(b, f.status)) return false
+      if (!matchesKind(b, f.kind)) return false
       const text = [b.benefit_name, b.provider, b.value, b.terms_summary, b.source_label].join(' ').toLowerCase()
       return words.every((w) => text.includes(w))
     })
@@ -87,18 +122,21 @@ interface BenefitsPageProps {
 
 export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }: BenefitsPageProps) {
   const toast = useToast()
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS)
+  const [filters, setFilters] = useState<Filters>(filtersFromUrl)
   const [editing, setEditing] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const addButtonRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  // Wide screens: the selected ticket opens in a panel beside the grid. Phones: right under its ticket.
+  const wide = useMediaQuery('(min-width: 1024px)')
+  // A link like /benefits#benefit-<id> (from the Assistant) opens that benefit.
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    window.location.hash.startsWith('#benefit-') ? window.location.hash.slice('#benefit-'.length) : null,
+  )
 
   useKeyboardShortcuts({
-    '/': () => {
-      setFiltersOpen(true)
-      requestAnimationFrame(() => searchRef.current?.focus())
-    },
+    '/': () => searchRef.current?.focus(),
   })
 
   // Used-up benefits leave the main list for the Used section; the same filters apply to both.
@@ -107,6 +145,17 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
   const shown = useMemo(() => (current ? applyFilters(current, filters) : null), [current, filters])
   const usedShown = useMemo(() => applyFilters(used, filters), [used, filters])
   const [usedOpen, setUsedOpen] = useState(false)
+  // How many each chip would show, with the other filters as they are.
+  const kindCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        (Object.keys(KINDS) as Kind[]).map((k) => [k, current ? applyFilters(current, { ...filters, kind: k }).length : 0]),
+      ) as Record<Kind, number>,
+    [current, filters],
+  )
+
+  // The open ticket: the one picked, else (on wide screens) the first. One that's used up or filtered out closes.
+  const selected = shown?.find((b) => b.id === selectedId) ?? (wide ? (shown?.[0] ?? null) : null)
 
   async function restore(b: Benefit) {
     try {
@@ -116,10 +165,11 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
       toast('error', `Couldn’t restore it: ${errorMessage(e)}`)
     }
   }
+  // The chips and search are always in view; this counts the rest, in the "More filters" panel.
   const activeFilters = Object.entries(filters).filter(
-    ([k, v]) => k !== 'sort' && v !== NO_FILTERS[k as keyof Filters],
+    ([k, v]) => !['sort', 'query', 'kind'].includes(k) && v !== NO_FILTERS[k as keyof Filters],
   ).length
-  const filtered = activeFilters > 0
+  const filtered = activeFilters > 0 || filters.query !== '' || filters.kind !== 'all'
 
   const set =
     <K extends keyof Filters>(key: K) =>
@@ -128,12 +178,40 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
 
   const selectClass = cn(fieldClass, 'border-line')
 
+  /** The open benefit's details and actions (or its edit form). */
+  const detail = (b: Benefit, className?: string) => (
+    <TicketDetail key={b.id} benefit={b} className={className}>
+      {editing === b.id ? (
+        <EditBenefitForm
+          as="div"
+          benefit={b}
+          onCancel={() => setEditing(null)}
+          onSaved={(saved) => {
+            onUpdated(saved)
+            setEditing(null)
+            toast('success', `Saved “${saved.benefit_name}”.`)
+          }}
+        />
+      ) : (
+        <BenefitActions benefit={b} onEdit={() => setEditing(b.id)} onUpdated={onUpdated} onRemoved={onRemoved} />
+      )}
+    </TicketDetail>
+  )
+
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
-          All Benefits
-        </h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 tabIndex={-1} className="text-3xl font-extrabold tracking-[-0.03em] outline-none sm:text-[40px] sm:leading-tight">
+            All Benefits
+          </h1>
+          {current ? (
+            <p className="text-ink-muted">
+              {current.length} saved
+              {used.length ? ` · ${used.length} used` : ''}
+            </p>
+          ) : null}
+        </div>
         {!adding ? (
           <Button
             ref={addButtonRef}
@@ -161,6 +239,7 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
             onSaved={(saved) => {
               onUpdated(saved)
               setAdding(false)
+              setSelectedId(saved.id)
               requestAnimationFrame(() => addButtonRef.current?.focus())
               toast('success', `Added “${saved.benefit_name}”.`)
             }}
@@ -168,51 +247,70 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
         </Card>
       ) : null}
 
-      <Card as="section" aria-labelledby="filters-title">
-        {/* Collapsed until opened; filters still apply while it's closed, and the chip says how many. */}
-        <h2 id="filters-title" className="text-lg font-semibold tracking-tight">
+      <section aria-labelledby="filters-title" className="grid gap-3">
+        <h2 id="filters-title" className="sr-only">
+          Search and filter
+        </h2>
+        <div className="flex flex-wrap gap-2.5">
+          <div className="relative min-w-60 flex-1">
+            <label htmlFor="benefit-search" className="sr-only">
+              Search benefits
+            </label>
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
+            <input
+              id="benefit-search"
+              ref={searchRef}
+              type="search"
+              value={filters.query}
+              onChange={set('query')}
+              placeholder="Search coffee, rides, points…"
+              autoComplete="off"
+              className={cn(fieldClass, 'glass min-h-12 rounded-2xl border-line pl-11')}
+            />
+            <kbd className="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs font-semibold text-ink-muted sm:block">
+              /
+            </kbd>
+          </div>
           <button
             type="button"
             aria-expanded={filtersOpen}
             aria-controls="filters-panel"
             onClick={() => setFiltersOpen((open) => !open)}
-            className={cn(
-              'flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-2xl px-5 py-4 text-left transition-colors duration-150 hover:bg-surface-2/60',
-              filtersOpen && 'rounded-b-none border-b border-line',
-            )}
+            className="glass flex min-h-12 cursor-pointer items-center gap-2 rounded-2xl px-4 text-sm font-semibold transition-colors duration-150 hover:bg-surface-2"
           >
             <ListFilter className="size-5 text-ink-muted" aria-hidden />
-            <span className="flex-1">Search and filter</span>
-            {activeFilters ? (
-              <CountChip>
-                {activeFilters} {activeFilters === 1 ? 'filter' : 'filters'} on
-              </CountChip>
-            ) : null}
+            More filters
+            {activeFilters ? <CountChip>{activeFilters} on</CountChip> : null}
             <ChevronDown
-              className={cn('size-5 text-ink-muted transition-transform duration-200', filtersOpen && 'rotate-180')}
+              className={cn('size-4 text-ink-muted transition-transform duration-200', filtersOpen && 'rotate-180')}
               aria-hidden
             />
           </button>
-        </h2>
-        <div id="filters-panel" hidden={!filtersOpen} className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="grid gap-1.5 sm:col-span-2 lg:col-span-1">
-            <label htmlFor="benefit-search" className="text-sm font-semibold">
-              Search
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" aria-hidden />
-              <input
-                id="benefit-search"
-                ref={searchRef}
-                type="search"
-                value={filters.query}
-                onChange={set('query')}
-                placeholder="Name, provider, terms…"
-                autoComplete="off"
-                className={cn(fieldClass, 'border-line pl-9')}
-              />
-            </div>
-          </div>
+        </div>
+
+        <div role="group" aria-label="Kind of benefit" className="flex flex-wrap gap-2">
+          {(Object.keys(KINDS) as Kind[]).map((k) => {
+            const on = filters.kind === k
+            // Empty chips are left out, except the one that's on and All.
+            if (!on && k !== 'all' && kindCounts[k] === 0) return null
+            return (
+              <button
+                key={k}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setFilters((f) => ({ ...f, kind: k }))}
+                className={cn(
+                  'min-h-10 cursor-pointer rounded-full border px-4 text-sm font-semibold transition-colors duration-150',
+                  on ? 'border-transparent bg-ink text-bg' : 'glass border-line hover:bg-surface-2',
+                )}
+              >
+                {KINDS[k]} <span className={cn('tabular-nums', on ? 'opacity-70' : 'text-ink-muted')}>{kindCounts[k]}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <Card id="filters-panel" hidden={!filtersOpen} className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-5">
           <div className="grid gap-1.5">
             <label htmlFor="filter-type" className="text-sm font-semibold">
               Type
@@ -264,7 +362,7 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
               ))}
             </select>
           </div>
-          <div className="grid gap-1.5 sm:col-span-2 lg:col-span-1">
+          <div className="grid gap-1.5">
             <label htmlFor="filter-sort" className="text-sm font-semibold">
               Sort by
             </label>
@@ -276,126 +374,115 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
               ))}
             </select>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </section>
 
-      <Card as="section" aria-labelledby="list-title">
-        <CardHeader
-          icon={Inbox}
-          title="Your benefits"
-          titleId="list-title"
-          action={
-            shown && current ? (
-              <CountChip>
-                <span aria-live="polite">
-                  {filtered ? `${shown.length} of ${current.length}` : `${current.length} total`}
-                </span>
-              </CountChip>
-            ) : null
-          }
-        />
+      <section aria-labelledby="list-title" className="grid gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="list-title" className="text-lg font-semibold tracking-tight">
+            Your benefits
+          </h2>
+          {shown && current ? (
+            <CountChip>
+              <span aria-live="polite">
+                {filtered ? `${shown.length} of ${current.length}` : `${current.length} total`}
+              </span>
+            </CountChip>
+          ) : null}
+        </div>
+
         {error ? (
-          <div className="grid gap-3 p-5">
+          <Card className="grid gap-3 p-5">
             <Message tone="error">Couldn’t load your benefits: {error}</Message>
             <div>
               <Button icon={<RefreshCw className="size-4" aria-hidden />} onClick={onRetry}>
                 Try again
               </Button>
             </div>
-          </div>
+          </Card>
         ) : !shown || !current ? (
-          <ul aria-busy="true" aria-label="Loading benefits" className="divide-y divide-line">
-            {['w-3/5', 'w-2/5', 'w-1/2'].map((width) => (
-              <li key={width} className="grid gap-2 px-5 py-5">
-                <Skeleton className={width} />
-                <Skeleton className="w-1/3" />
-              </li>
+          <div aria-busy="true" aria-label="Loading benefits" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-[170px] rounded-[20px]" />
             ))}
-          </ul>
+          </div>
         ) : current.length === 0 && used.length === 0 ? (
-          <div className="grid justify-items-center gap-2 px-5 py-10 text-center text-ink-muted">
+          <Card className="grid justify-items-center gap-2 px-5 py-10 text-center text-ink-muted">
             <Inbox className="size-7" aria-hidden />
             <p className="font-semibold text-ink">Nothing tracked yet</p>
             <p>Add one yourself above, or connect your email or a credit card on the dashboard.</p>
             <Link href="/" className="mt-1 font-semibold text-primary-text underline-offset-4 hover:underline">
               Go to the dashboard
             </Link>
-          </div>
+          </Card>
         ) : current.length === 0 ? (
-          <div className="grid justify-items-center gap-2 px-5 py-10 text-center text-ink-muted">
+          <Card className="grid justify-items-center gap-2 px-5 py-10 text-center text-ink-muted">
             <CircleCheck className="size-7 text-ok" aria-hidden />
             <p className="font-semibold text-ink">All used</p>
             <p>Everything you tracked is in the Used list below.</p>
-          </div>
+          </Card>
         ) : shown.length === 0 ? (
-          <div className="grid justify-items-center gap-3 px-5 py-10 text-center text-ink-muted">
+          <Card className="grid justify-items-center gap-3 px-5 py-10 text-center text-ink-muted">
             <Search className="size-7" aria-hidden />
             <p className="font-semibold text-ink">No benefits match these filters</p>
             <Button onClick={() => setFilters((f) => ({ ...NO_FILTERS, sort: f.sort }))}>Clear filters</Button>
-          </div>
+          </Card>
         ) : (
-          <ul className="divide-y divide-line">
-            {shown.map((b, i) =>
-              editing === b.id ? (
-                <EditBenefitForm
-                  key={b.id}
-                  benefit={b}
-                  onCancel={() => setEditing(null)}
-                  onSaved={(saved) => {
-                    onUpdated(saved)
-                    setEditing(null)
-                    toast('success', `Saved “${saved.benefit_name}”.`)
-                  }}
-                />
-              ) : (
-                <BenefitRow key={b.id} benefit={b} index={i}>
-                  <BenefitActions
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+              {shown.map((b, i) => (
+                <Fragment key={b.id}>
+                  <TicketStub
                     benefit={b}
-                    onEdit={() => setEditing(b.id)}
-                    onUpdated={onUpdated}
-                    onRemoved={onRemoved}
+                    index={i}
+                    selected={selected?.id === b.id}
+                    // Phones: tapping the open ticket closes it.
+                    onSelect={() => setSelectedId(!wide && selected?.id === b.id ? null : b.id)}
                   />
-                </BenefitRow>
-              ),
-            )}
-          </ul>
-        )}
-        {usedShown.length > 0 ? (
-          <div className="border-t border-line">
-            <h3>
-              <button
-                type="button"
-                aria-expanded={usedOpen}
-                aria-controls="used-list"
-                onClick={() => setUsedOpen((o) => !o)}
-                className="flex min-h-11 w-full cursor-pointer items-center gap-2.5 px-5 py-3 text-left font-semibold transition-colors duration-150 hover:bg-surface-2/60"
-              >
-                <ChevronDown
-                  className={cn('size-4 text-ink-muted transition-transform duration-200', !usedOpen && '-rotate-90')}
-                  aria-hidden
-                />
-                Used
-                <CountChip>{usedShown.length}</CountChip>
-              </button>
-            </h3>
-            <ul id="used-list" hidden={!usedOpen} className="divide-y divide-line">
-              {usedShown.map((b) => (
-                <li key={b.id} className="flex items-center gap-3 px-5 py-3 text-ink-muted">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-ink line-through decoration-ink-muted/50">{b.benefit_name}</p>
-                    <p className="text-sm">
-                      {b.provider ? `${b.provider} · ` : ''}Used {b.used_on ? formatDate(b.used_on) : ''}
-                    </p>
-                  </div>
-                  <Button icon={<RotateCcw className="size-4" aria-hidden />} onClick={() => restore(b)}>
-                    Restore<span className="sr-only"> {b.benefit_name}</span>
-                  </Button>
-                </li>
+                  {!wide && selected?.id === b.id ? detail(b, 'col-span-full') : null}
+                </Fragment>
               ))}
-            </ul>
+            </div>
+            {wide && selected ? <div className="sticky top-24">{detail(selected)}</div> : null}
           </div>
-        ) : null}
-      </Card>
+        )}
+      </section>
+
+      {usedShown.length > 0 ? (
+        <Card as="section" aria-label="Used">
+          <h3>
+            <button
+              type="button"
+              aria-expanded={usedOpen}
+              aria-controls="used-list"
+              onClick={() => setUsedOpen((o) => !o)}
+              className="flex min-h-11 w-full cursor-pointer items-center gap-2.5 rounded-[20px] px-5 py-3 text-left font-semibold transition-colors duration-150 hover:bg-surface-2/60"
+            >
+              <ChevronDown
+                className={cn('size-4 text-ink-muted transition-transform duration-200', !usedOpen && '-rotate-90')}
+                aria-hidden
+              />
+              Used
+              <CountChip>{usedShown.length}</CountChip>
+            </button>
+          </h3>
+          <ul id="used-list" hidden={!usedOpen} className="divide-y divide-line border-t border-line">
+            {usedShown.map((b) => (
+              <li key={b.id} className="flex items-center gap-3 px-5 py-3 text-ink-muted">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink line-through decoration-ink-muted/50">{b.benefit_name}</p>
+                  <p className="text-sm">
+                    {b.provider ? `${b.provider} · ` : ''}Used {b.used_on ? formatDate(b.used_on) : ''}
+                  </p>
+                </div>
+                <Button icon={<RotateCcw className="size-4" aria-hidden />} onClick={() => restore(b)}>
+                  Restore<span className="sr-only"> {b.benefit_name}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
     </div>
   )
 }

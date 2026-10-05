@@ -77,7 +77,7 @@ export default function App({ user, session, notice, onSessionChange, onSignOut 
         {path === '/benefits' ? (
           <BenefitsPage benefits={benefits} error={error} onRetry={reload} onUpdated={upsert} onRemoved={remove} />
         ) : path === '/assistant' ? (
-          <AssistantPage />
+          <AssistantPage benefits={benefits} />
         ) : path === '/connections' ? (
           <ConnectionsPage session={session} onBenefitsChanged={reload} onSessionChange={onSessionChange} />
         ) : path === '/' ? (

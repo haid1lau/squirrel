@@ -334,6 +334,14 @@
   [data-reveal][data-shown] { opacity: 1; transform: none; }
 }
 
+/* A ticket: a round notch cut into each side at --notch-y, where the tear line is. */
+@utility ticket {
+  --notch-l: radial-gradient(circle 10px at 0 var(--notch-y, 50%), #0000 97%, #000);
+  --notch-r: radial-gradient(circle 10px at 100% var(--notch-y, 50%), #0000 97%, #000);
+  -webkit-mask: var(--notch-l) left / 51% 100% no-repeat, var(--notch-r) right / 51% 100% no-repeat;
+  mask: var(--notch-l) left / 51% 100% no-repeat, var(--notch-r) right / 51% 100% no-repeat;
+}
+
 /* Hidden text under a field of drifting dots, like Telegram's spoilers. */
 @utility spoiler {
   color: transparent;

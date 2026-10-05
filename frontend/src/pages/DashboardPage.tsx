@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { HeroAcorn, type AcornMood } from '../components/acorn/HeroAcorn'
+import { DashboardTiles } from '../components/DashboardTiles'
 import { ExpiringList } from '../components/ExpiringList'
 import { KpiRow } from '../components/KpiRow'
 import { ReviewQueue } from '../components/ReviewQueue'
@@ -18,19 +19,14 @@ interface DashboardPageProps {
 
 export function DashboardPage({ user, benefits, error, onRetry, onConfirmed, onDismissed }: DashboardPageProps) {
   // Derived during render rather than stored, so it can never go stale.
-  const { tracked, review, expiringSoon, anyWithinWeek } = useMemo(() => {
-    if (!benefits) return { tracked: null, review: null, expiringSoon: null, anyWithinWeek: false }
+  const { tracked, review, soon } = useMemo(() => {
+    if (!benefits) return { tracked: null, review: null, soon: null }
     // Used-up benefits aren't tracked any more; a used-up card credit still shows until it resets.
     const tracked = benefits.filter((b) => !b.needs_review && !isArchived(b))
-    const soon = tracked.filter(
-      (b) => !b.used_on && b.days_until_expiry != null && b.days_until_expiry >= 0 && b.days_until_expiry <= 30,
-    )
-    return {
-      tracked,
-      review: benefits.filter((b) => b.needs_review),
-      expiringSoon: soon.length,
-      anyWithinWeek: soon.some((b) => (b.days_until_expiry ?? Infinity) <= 7),
-    }
+    const soon = tracked
+      .filter((b) => !b.used_on && b.days_until_expiry != null && b.days_until_expiry >= 0 && b.days_until_expiry <= 30)
+      .toSorted((a, b) => (a.days_until_expiry ?? 0) - (b.days_until_expiry ?? 0))
+    return { tracked, review: benefits.filter((b) => b.needs_review), soon }
   }, [benefits])
 
   const firstName = user.name?.split(' ')[0]
@@ -77,20 +73,18 @@ export function DashboardPage({ user, benefits, error, onRetry, onConfirmed, onD
           {acornSize ? <HeroAcorn mood={mood} size={acornSize} /> : null}
         </div>
 
-        <KpiRow
-          tracked={tracked?.length ?? null}
-          expiringSoon={expiringSoon}
-          anyWithinWeek={anyWithinWeek}
-          needsReview={review?.length ?? null}
-        />
+        <KpiRow tracked={tracked?.length ?? null} soon={soon} needsReview={review?.length ?? null} />
 
-        <ExpiringList
-          benefits={tracked}
-          error={error}
-          onRetry={onRetry}
-          onUpdated={onConfirmed}
-          onRemoved={onDismissed}
-        />
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <ExpiringList
+            benefits={tracked}
+            error={error}
+            onRetry={onRetry}
+            onUpdated={onConfirmed}
+            onRemoved={onDismissed}
+          />
+          <DashboardTiles benefits={tracked} />
+        </div>
       </section>
 
       <ReviewQueue benefits={review} onConfirmed={onConfirmed} onDismissed={onDismissed} />

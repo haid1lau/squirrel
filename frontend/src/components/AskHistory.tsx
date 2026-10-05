@@ -1,9 +1,13 @@
 import { History, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useArmedAction } from '../hooks/useArmedAction'
-import { api, errorMessage, type AskEntry } from '../lib/api'
+import { api, errorMessage, type AskEntry, type Benefit } from '../lib/api'
+import { isArchived } from '../lib/usage'
 import { useToast } from '../lib/toast'
 import { AiLabel } from './AiLabel'
+import { CategoryArt } from './CategoryArt'
+import { Link } from './Link'
+import { UrgencyBadge } from './UrgencyBadge'
 import { Button } from './ui/Button'
 import { Card, CardHeader, CountChip } from './ui/Card'
 import { Message } from './ui/Message'
@@ -33,7 +37,39 @@ function RevealedAnswer({ text }: { text: string }) {
   )
 }
 
+/** Tracked benefits an answer names (up to 3), shown as cards under it. */
+function mentioned(answer: string, benefits: Benefit[]) {
+  const text = answer.toLowerCase()
+  return benefits
+    .filter((b) => !isArchived(b) && b.benefit_name.length >= 4 && text.includes(b.benefit_name.toLowerCase()))
+    .slice(0, 3)
+}
+
+function MentionedCard({ benefit }: { benefit: Benefit }) {
+  return (
+    <Link
+      href={`/benefits#benefit-${benefit.id}`}
+      className="glass flex items-center gap-3 rounded-2xl p-3 transition-transform duration-150 hover:-translate-y-0.5"
+    >
+      <CategoryArt category={benefit.category} className="size-11" />
+      <span className="grid min-w-0 flex-1">
+        <span className="truncate font-bold">{benefit.benefit_name}</span>
+        <span className="truncate text-sm text-ink-muted">{benefit.provider}</span>
+      </span>
+      {benefit.needs_review ? (
+        <span className="rounded-full bg-warn-soft px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-warn">
+          Needs review
+        </span>
+      ) : (
+        <UrgencyBadge days={benefit.days_until_expiry} />
+      )}
+    </Link>
+  )
+}
+
 interface AskHistoryProps {
+  /** Tracked benefits, to show the ones an answer names. */
+  benefits: Benefit[] | null
   entries: AskEntry[] | null
   /** The answer just asked for, which appears line by line. */
   freshId?: string | null
@@ -42,7 +78,7 @@ interface AskHistoryProps {
   onCleared: () => void
 }
 
-export function AskHistory({ entries, freshId, error, onRetry, onCleared }: AskHistoryProps) {
+export function AskHistory({ benefits, entries, freshId, error, onRetry, onCleared }: AskHistoryProps) {
   const toast = useToast()
   const [armed, click, reset] = useArmedAction()
   const [clearing, setClearing] = useState(false)
@@ -68,7 +104,7 @@ export function AskHistory({ entries, freshId, error, onRetry, onCleared }: AskH
     <Card as="section" aria-labelledby="history-title">
       <CardHeader
         icon={History}
-        title="Past questions"
+        title="Conversation"
         titleId="history-title"
         action={entries?.length ? <CountChip>{entries.length}</CountChip> : null}
       />
@@ -93,22 +129,36 @@ export function AskHistory({ entries, freshId, error, onRetry, onCleared }: AskH
         ) : (
           <>
             <ol className="grid gap-4" aria-live="polite">
-              {entries.map((entry) => (
-                <li key={entry.id} className="grid animate-rise gap-2 border-b border-line pb-4 last:border-b-0 last:pb-0">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <p className="font-semibold">{entry.question}</p>
-                    <time dateTime={entry.created_at} className="text-xs text-ink-muted">
-                      {timeFormat.format(new Date(entry.created_at))}
-                    </time>
-                  </div>
-                  <div>
-                    <AiLabel />
-                  </div>
-                  <p className="rounded-xl bg-surface-2 px-4 py-3 whitespace-pre-wrap">
-                    {entry.id === freshId ? <RevealedAnswer text={entry.answer} /> : entry.answer}
-                  </p>
-                </li>
-              ))}
+              {entries.map((entry) => {
+                const cards = benefits ? mentioned(entry.answer, benefits) : []
+                return (
+                  <li key={entry.id} className="grid animate-rise gap-3 border-b border-line pb-5 last:border-b-0 last:pb-0">
+                    <div className="grid max-w-[85%] justify-items-end gap-1 justify-self-end">
+                      <p className="rounded-[20px_20px_4px_20px] bg-ink px-4 py-2.5 font-semibold text-bg">{entry.question}</p>
+                      <time dateTime={entry.created_at} className="text-xs text-ink-muted">
+                        {timeFormat.format(new Date(entry.created_at))}
+                      </time>
+                    </div>
+                    <div className="grid max-w-[92%] gap-2">
+                      <div>
+                        <AiLabel />
+                      </div>
+                      <p className="rounded-[20px_20px_20px_4px] bg-surface-2 px-4 py-3 whitespace-pre-wrap">
+                        {entry.id === freshId ? <RevealedAnswer text={entry.answer} /> : entry.answer}
+                      </p>
+                      {cards.length ? (
+                        <ul className="grid max-w-xl gap-2" aria-label="Benefits in this answer">
+                          {cards.map((b) => (
+                            <li key={b.id}>
+                              <MentionedCard benefit={b} />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  </li>
+                )
+              })}
             </ol>
             <div>
               <Button

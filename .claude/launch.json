@@ -6,6 +6,7 @@
       "runtimeExecutable": "/opt/anaconda3/bin/python3",
       "runtimeArgs": ["-u", "server.py"],
       "port": 8000,
+      "autoPort": false,
       "url": "http://127.0.0.1:8000"
     }
   ]

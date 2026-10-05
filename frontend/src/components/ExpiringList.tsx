@@ -35,7 +35,7 @@ export function ExpiringList({ benefits, error, onRetry, onUpdated, onRemoved, l
     <Card as="section" aria-labelledby="expiring-title">
       <CardHeader
         icon={Clock}
-        title="Expiring soonest"
+        title="Up next"
         titleId="expiring-title"
         action={sorted ? <CountChip>{sorted.length} total</CountChip> : null}
       />
