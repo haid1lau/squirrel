@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { AcornRain } from './components/acorn/AcornRain'
 import { CategoryArtSprite } from './components/CategoryArt'
+import { Fireflies } from './components/Fireflies'
 import { Header } from './components/Header'
 import { Link } from './components/Link'
 import { Woodland } from './components/Woodland'
@@ -64,6 +65,7 @@ export default function App({ user, session, notice, onSessionChange, onSignOut 
     <>
       <CategoryArtSprite />
       <Woodland />
+      <Fireflies />
       <AcornRain />
       <a
         href="#main"

@@ -65,6 +65,13 @@
     50% { transform: translate(10px, -14px); }
     70% { opacity: 0.8; }
   }
+  /* A background firefly wanders off by (--dx, --dy) and back, glowing and fading. */
+  @keyframes wander {
+    0%, 100% { opacity: 0; transform: none; }
+    30% { opacity: 1; }
+    50% { transform: translate(var(--dx), var(--dy)); }
+    70% { opacity: 0.7; }
+  }
   /* Waterfall streaks: one dash pattern (18 + 14) twice, so the loop is seamless. */
   @keyframes fall {
     to { stroke-dashoffset: -64; }
@@ -311,6 +318,17 @@
   }
   .wood-ripples ellipse { opacity: 0; animation: ripple 2.4s ease-out infinite; }
   .wood-mist circle { animation: mist 2.1s ease-in-out infinite; }
+  .page-fireflies { display: var(--wood-firefly); }
+  .page-fireflies span {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FEF3C7;
+    box-shadow: 0 0 8px 3px #FDE68A, 0 0 22px 7px rgb(251 191 36 / 0.6);
+    opacity: 0;
+    animation: wander 10s ease-in-out infinite;
+  }
   .wood-fireflies { display: var(--wood-firefly); fill: #FEF3C7; }
   .wood-fireflies circle {
     opacity: 0;
@@ -406,7 +424,8 @@
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   body::before { animation: none; }
-  .wood-fireflies circle { animation: none; opacity: 0.85; }
+  .wood-fireflies circle,
+  .page-fireflies span { animation: none; opacity: 0.85; }
   .wood-streaks line, .wood-mist circle, .wood-fog ellipse { animation: none; }
   .wood-ripples ellipse { animation: none; opacity: 0.5; }
   [data-reveal] { opacity: 1; transform: none; }
