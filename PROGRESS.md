@@ -60,6 +60,7 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 /opt/anaconda3/bin/python3 server.py    # then open http://127.0.0.1:8000
 ```
 
+- **Server tests:** `/opt/anaconda3/bin/python3 -m pytest` in the project folder (about 10 seconds; see section 33). Run them before committing.
 - **Frontend development:** run `npm run dev` in `frontend/` for live reload. It forwards `/api` requests to `server.py`, which must also be running.
 - **Reset all data:** stop the server and delete `instance/` (database and the key that encrypts Gmail tokens). Users will need to sign up again.
 - **Frontend dev and Google:** after Google sign-in you land on the built app at `:8000`, not the Vite dev server. Password sign-in works on both.
@@ -566,6 +567,13 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - API: `GET /api/benefits/removed`, `POST /api/benefits/<id>/restore`.
 - Checked on a copy of the database (remove, restore, the 30-day deletion, and a deleted benefit not coming back) and in the browser on the demo account (remove from the ⋯ menu, Restore from the list, Undo on the toast; the demo data was left as it was).
 
+### 33. Automated server tests (7 October 2026)
+- **111 tests in `tests/`**, run with `python3 -m pytest` (pytest comes with Anaconda; elsewhere `pip install -r requirements-dev.txt`). They take about 10 seconds.
+- **They never touch real data or the outside world.** `tests/conftest.py` gives every test its own empty database in a temporary folder, captures email instead of sending it (`.env`'s SMTP settings are switched off before `config.py` loads), and fails any test that tries to reach OpenAI, Google, Microsoft or an SMTP server. Checked: the real `instance/benefitapp.db` is unchanged after a run.
+- **What they cover:** `test_extraction.py` (the plain-code checks on AI output), `test_scan_safeguards.py` (marketing filter, daily cap, retries), `test_auto_scan.py` (daily scan on/off, once a day), `test_cards.py` (reset dates incl. leap years and anniversaries, the card list, perks becoming benefits), `test_recently_removed.py` (restore, 30-day deletion, nothing coming back after a rescan), `test_auth.py` (sign-up, lockout, sessions, reset and confirmation links, the Google account takeover protection, account deletion), `test_reminders.py` (who's emailed, when, in which time zone, only once), `test_api.py` (the real server on a spare port: sign-in, JSON and origin checks, one user never seeing or changing another's benefits).
+- **Shown to catch real bugs:** re-creating section 29's lost-lines bug, ignoring the daily cap, and letting one user restore another's benefit each made tests fail.
+- **Not covered yet:** the Gmail, Outlook and IMAP scanners themselves (they need fake mail servers), the assistant and digest (OpenAI), and the React screens.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
@@ -575,7 +583,7 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
 - **No real browser click-through yet.** Checks so far are screenshots plus API tests with `curl`.
-- **No automated tests are saved in the repo.** The offline checks run during development were throwaway scripts.
+- **Tests cover the server only** (section 33): not the inbox scanners, the AI features or the React screens.
 - **Reminders are email only**, sent by a thread inside `server.py`: none go out while the server is stopped (a missed one is sent at the next check if the benefit hasn't expired). No push or in-app notifications. The email has no one-click unsubscribe; it says to change or stop a reminder from the benefit's ⋯ menu. The background thread's own send hasn't been watched end to end yet; the sample was sent by calling the same code directly.
 - **Time zone comes from the last device used.** Someone travelling gets reminders on that device's clock; there's no manual time-zone picker.
 - **Sending through a personal Gmail account** is limited (about 500 emails a day) and may be flagged as bulk mail. Fine for testers; use a sending service (e.g. Amazon SES, Postmark, Resend) with a custom domain before launch.
@@ -596,7 +604,7 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 3. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
 4. **Verify the card catalog and loyalty programs** against current terms and sending domains, and fix `cards.py` / `loyalty.py`. Add more programs (non-US hotels and airlines) as needed.
 5. **Custom cards and perks.**
-6. **Add tests:** pytest for `validate()`, auth, OAuth state handling, the period maths and the endpoints (Google + OpenAI mocked); React Testing Library for sign-in, connections and the new pages.
+6. **More tests:** the server has tests (section 33). Still to add: the inbox scanners with fake mail servers, and React Testing Library for sign-in, connections and the benefit pages.
 7. **Watch a real daily scan:** turn on Daily scan on your own account, open Squirrel the next day, and check the toast, the new benefits and the OpenAI usage page.
 8. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026); the owner will test once they have an Outlook address.
 9. **Build an extraction eval** from real benefit emails.

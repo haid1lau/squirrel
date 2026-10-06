@@ -1,0 +1,7 @@
+# For working on Squirrel: the app's own requirements plus the test runner.
+#
+#   python3 -m pip install -r requirements-dev.txt
+#   python3 -m pytest
+
+-r requirements.txt
+pytest>=8
