@@ -549,11 +549,18 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - **Checked:** the on/off and once-a-day logic with the scans mocked, on a copy of the database; in the browser (demo account, with today's scan pre-marked so its fake Gmail wasn't scanned): the switch turns on, stays on after a reload, turns off, and fits at phone width. **Not yet watched: a real daily scan of a real inbox.**
 - A Gmail connection in Testing mode expires after 7 days; a daily scan then fails like a manual one would and asks the user to reconnect.
 
+### 31. Singapore credit cards (6 October 2026)
+- **20 Singapore cards added to the card list** in `cards.py`, chosen from the cards Singapore comparison sites (SingSaver, MoneySmart and others) ranked most popular in 2026. There's no public data on which cards are used most, so popularity rankings stood in for it. Cashback: UOB One, DBS Live Fresh, Citi Cash Back, Citi Cash Back+, OCBC 365, OCBC FRANK, UOB Absolute Cashback, UOB EVOL, Maybank Family & Friends, Standard Chartered Simply Cash. Rewards: HSBC Revolution, Citi Rewards, DBS Woman's World, UOB Lady's. Miles: Citi PremierMiles, DBS Altitude, UOB PRVI Miles, HSBC TravelOne, KrisFlyer UOB, Amex KrisFlyer Ascend. None were already in the list (it had 5 US cards).
+- **Rates, caps and fees were checked against each issuer's own pages (October 2026)**, except the UOB Lady's bonus cap and fee and the Maybank annual fee, which came from SingSaver/MoneySmart, and were left out where no source was found (DBS Live Fresh fee, Maybank fee).
+- **Two kinds of benefit per card now:** `perks` reset on a schedule and become tracked benefits with reminders (lounge visits on Citi PremierMiles, DBS Altitude, UOB PRVI Miles and HSBC TravelOne; the Amex KrisFlyer Ascend Hilton night). `features` (cashback and miles rates, caps, fees) are shown for reference only, in the picker and in the opened card in the wallet, since nothing there expires. Most Singapore cards have only features.
+- **Left out on purpose:** monthly cashback caps as tracked perks (a cap isn't money you lose, and many reset on the statement month, whose dates Squirrel doesn't know); the Amex Ascend's lounge passes (in an older terms PDF but not on Amex's current page).
+- The dropdown groups cards under Singapore and United States. Each card has a plain colour in the wallet (no logos). Each card says when it was last checked (`SG_CHECKED`, `CATALOG_CHECKED`).
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
 - **Google sign-in and Gmail scanning not yet tried end to end in a browser.** The OAuth client and Gmail API access are verified; the flows were tested with Google mocked.
-- **Card perk catalog is hand-written sample data**, last checked mid-2025, and US cards only. Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
+- **Card perk catalog is hand-written**: US cards last checked mid-2025, Singapore cards October 2026 (section 31). Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
 - **Unconfirmed accounts are kept forever.** Email verification is a soft gate (section 28); accounts that never confirm aren't deleted automatically.
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).

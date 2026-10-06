@@ -54,7 +54,7 @@ export function CardsPanel({ onChanged }: { onChanged: () => void }) {
       setCardKey('')
       setMonth('')
       onChanged()
-      toast('success', `Added ${card.name}. Its perks are now tracked.`)
+      toast('success', selected.perks.length ? `Added ${card.name}. Its perks are now tracked.` : `Added ${card.name}.`)
     } catch (err) {
       setFormError(errorMessage(err))
     } finally {
@@ -110,11 +110,18 @@ export function CardsPanel({ onChanged }: { onChanged: () => void }) {
                       className={cn(fieldClass, 'border-line')}
                     >
                       <option value="">Choose a card…</option>
-                      {available.map((c) => (
-                        <option key={c.key} value={c.key}>
-                          {c.name}
-                        </option>
-                      ))}
+                      {data.catalog.countries.map((country) => {
+                        const cards = available.filter((c) => c.country === country.code)
+                        return cards.length ? (
+                          <optgroup key={country.code} label={country.name}>
+                            {cards.map((c) => (
+                              <option key={c.key} value={c.key}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ) : null
+                      })}
                     </select>
                   </div>
 
@@ -145,15 +152,34 @@ export function CardsPanel({ onChanged }: { onChanged: () => void }) {
                 </div>
 
                 {selected ? (
-                  <div className="rounded-xl bg-surface-2 px-4 py-3 text-sm">
-                    <p className="font-semibold">Perks that will be tracked</p>
-                    <ul className="mt-1 grid gap-0.5 text-ink-muted">
-                      {selected.perks.map((p) => (
-                        <li key={p.name}>
-                          {p.name}: {p.value}, resets {p.resets}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="grid gap-3 rounded-xl bg-surface-2 px-4 py-3 text-sm">
+                    {selected.perks.length ? (
+                      <div>
+                        <p className="font-semibold">Perks that will be tracked</p>
+                        <ul className="mt-1 grid gap-0.5 text-ink-muted">
+                          {selected.perks.map((p) => (
+                            <li key={p.name}>
+                              {p.name}: {p.value}, resets {p.resets}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {selected.features.length ? (
+                      <div>
+                        <p className="font-semibold">Card benefits</p>
+                        <ul className="mt-1 grid list-disc gap-0.5 pl-4 text-ink-muted">
+                          {selected.features.map((f) => (
+                            <li key={f}>{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {!selected.perks.length ? (
+                      <p className="text-ink-muted">
+                        Nothing on this card resets or expires, so there’s nothing to track or remind you about.
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
 

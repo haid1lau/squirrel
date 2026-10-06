@@ -183,7 +183,12 @@ export interface ImapAccount {
 export interface CatalogCard {
   key: string
   name: string
+  /** A code from the catalog's countries, e.g. "SG". */
+  country: string
   needs_anniversary: boolean
+  /** What the card always gives (rates, caps, fees): shown for reference, not tracked. */
+  features: string[]
+  /** What resets on a schedule; each becomes a tracked benefit. */
   perks: { name: string; value: string; resets: string }[]
 }
 
@@ -196,7 +201,7 @@ export interface UserCard {
 
 export interface CardsResponse {
   cards: UserCard[]
-  catalog: { checked: string; cards: CatalogCard[] }
+  catalog: { checked: string; countries: { code: string; name: string }[]; cards: CatalogCard[] }
 }
 
 // Called when any request finds the session has ended, so the app can show

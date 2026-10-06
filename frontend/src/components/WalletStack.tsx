@@ -17,6 +17,26 @@ const FACES: Record<string, { bg: string; ink: string }> = {
   chase_sapphire_reserve: { bg: 'linear-gradient(135deg, #1e2a4a 0%, #0b1324 60%, #26365e 100%)', ink: '#f8fafc' },
   chase_sapphire_preferred: { bg: 'linear-gradient(135deg, #2f5fa8 0%, #1b3a6b 60%, #3b73c4 100%)', ink: '#f8fafc' },
   capital_one_venture_x: { bg: 'linear-gradient(135deg, #3a3f47 0%, #15181d 60%, #2b3038 100%)', ink: '#f8fafc' },
+  uob_one: { bg: 'linear-gradient(135deg, #2b4c9b 0%, #142a63 60%, #3a5fb8 100%)', ink: '#f8fafc' },
+  dbs_live_fresh: { bg: 'linear-gradient(135deg, #7dd3c0 0%, #2a9d8f 60%, #8fe0cc 100%)', ink: '#06201c' },
+  citi_cash_back: { bg: 'linear-gradient(135deg, #5fa8e8 0%, #1e5fa8 60%, #7bb9ee 100%)', ink: '#f8fafc' },
+  citi_cash_back_plus: { bg: 'linear-gradient(135deg, #9fb6c9 0%, #4d6a84 60%, #b3c6d6 100%)', ink: '#0f1b26' },
+  ocbc_365: { bg: 'linear-gradient(135deg, #e04a3f 0%, #9b1c17 60%, #ef6a5f 100%)', ink: '#fff7f5' },
+  ocbc_frank: { bg: 'linear-gradient(135deg, #f7c948 0%, #e07b39 60%, #f9d77a 100%)', ink: '#2b1606' },
+  uob_absolute_cashback: { bg: 'linear-gradient(135deg, #1f2937 0%, #030712 60%, #374151 100%)', ink: '#f8fafc' },
+  uob_evol: { bg: 'linear-gradient(135deg, #7ad08a 0%, #2f8a4a 60%, #9be0a8 100%)', ink: '#06210f' },
+  uob_ladys: { bg: 'linear-gradient(135deg, #f4a7c3 0%, #c2457a 60%, #f7bfd3 100%)', ink: '#2b0716' },
+  maybank_family_friends: { bg: 'linear-gradient(135deg, #ffd84d 0%, #e3b100 60%, #ffe27a 100%)', ink: '#2b2200' },
+  sc_simply_cash: { bg: 'linear-gradient(135deg, #38b06f 0%, #0f6e8c 60%, #4fc28a 100%)', ink: '#f8fafc' },
+  hsbc_revolution: { bg: 'linear-gradient(135deg, #e5e7eb 0%, #b91c1c 70%, #f3f4f6 100%)', ink: '#111827' },
+  citi_rewards: { bg: 'linear-gradient(135deg, #c4b5fd 0%, #6d28d9 60%, #ddd6fe 100%)', ink: '#f8fafc' },
+  dbs_womans_world: { bg: 'linear-gradient(135deg, #4a1d3f 0%, #1f0a1a 60%, #6b2a5b 100%)', ink: '#fdf2f8' },
+  citi_premiermiles: { bg: 'linear-gradient(135deg, #475569 0%, #0f172a 60%, #64748b 100%)', ink: '#f8fafc' },
+  dbs_altitude: { bg: 'linear-gradient(135deg, #1e1b4b 0%, #000000 60%, #312e81 100%)', ink: '#f8fafc' },
+  uob_prvi_miles: { bg: 'linear-gradient(135deg, #2c3e50 0%, #0b1622 60%, #4b6584 100%)', ink: '#f8fafc' },
+  hsbc_travelone: { bg: 'linear-gradient(135deg, #0f4c5c 0%, #062a33 60%, #1b6b7d 100%)', ink: '#f8fafc' },
+  uob_krisflyer: { bg: 'linear-gradient(135deg, #1b2a5c 0%, #0a1430 60%, #c9a227 100%)', ink: '#f8fafc' },
+  amex_krisflyer_ascend: { bg: 'linear-gradient(135deg, #d6b56b 0%, #8a6a2b 60%, #e6c98a 100%)', ink: '#231a06' },
 }
 const DEFAULT_FACE = { bg: 'linear-gradient(135deg, #64748b 0%, #334155 100%)', ink: '#f8fafc' }
 
@@ -83,7 +103,8 @@ export function WalletStack({ cards, catalog, onRemoved }: WalletStackProps) {
         {width
           ? cards.map((card, i) => {
               const face = FACES[card.card_key] ?? DEFAULT_FACE
-              const perks = catalog.find((c) => c.key === card.card_key)?.perks.length ?? 0
+              const info = catalog.find((c) => c.key === card.card_key)
+              const perks = info?.perks.length ?? 0
               const isOpen = card.id === openCard?.id
               const inPile = Boolean(openCard) && !isOpen
               const style: CSSProperties = {
@@ -120,7 +141,15 @@ export function WalletStack({ cards, catalog, onRemoved }: WalletStackProps) {
                     style={{ background: 'linear-gradient(135deg, #f3e3b0, #c8a95a 60%, #efd88f)' }}
                   />
                   <span className="flex items-end justify-between gap-3 text-sm font-semibold">
-                    <span>{perks === 1 ? '1 perk tracked' : `${perks} perks tracked`}</span>
+                    <span>
+                      {perks === 1
+                        ? '1 perk tracked'
+                        : perks
+                          ? `${perks} perks tracked`
+                          : info?.features.length
+                            ? 'Benefits listed'
+                            : 'No perks tracked'}
+                    </span>
                     {card.anniversary_month ? (
                       <span className="opacity-80">Renews {MONTHS[card.anniversary_month - 1]}</span>
                     ) : null}
@@ -136,6 +165,7 @@ export function WalletStack({ cards, catalog, onRemoved }: WalletStackProps) {
           key={openCard.id}
           card={openCard}
           perks={catalog.find((c) => c.key === openCard.card_key)?.perks ?? []}
+          features={catalog.find((c) => c.key === openCard.card_key)?.features ?? []}
           total={cards.length}
           onRemoved={(id) => {
             setOpen(null)
@@ -151,11 +181,12 @@ interface CardDetailProps {
   card: UserCard
   total: number
   perks: CatalogCard['perks']
+  features: CatalogCard['features']
   onRemoved: (id: string) => void
 }
 
-/** The opened card's perks, and Remove. */
-function CardDetail({ card, total, perks, onRemoved }: CardDetailProps) {
+/** The opened card's perks and benefits, and Remove. */
+function CardDetail({ card, total, perks, features, onRemoved }: CardDetailProps) {
   const toast = useToast()
   const [armed, armOrConfirm, disarm] = useArmedAction()
   const [busy, setBusy] = useState(false)
@@ -177,16 +208,25 @@ function CardDetail({ card, total, perks, onRemoved }: CardDetailProps) {
   return (
     <div id="wallet-detail" className="grid max-w-[360px] animate-rise gap-3 rounded-xl bg-surface-2 p-4">
       <p className="font-semibold">{card.name}</p>
-      <ul className="grid gap-1 text-sm text-ink-muted">
-        {perks.map((p) => (
-          <li key={p.name} className="flex justify-between gap-3">
-            <span>{p.name}</span>
-            <span className="text-right whitespace-nowrap text-ink">
-              {p.value} · {p.resets}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {perks.length ? (
+        <ul className="grid gap-1 text-sm text-ink-muted">
+          {perks.map((p) => (
+            <li key={p.name} className="flex justify-between gap-3">
+              <span>{p.name}</span>
+              <span className="text-right whitespace-nowrap text-ink">
+                {p.value} · {p.resets}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {features.length ? (
+        <ul className="grid list-disc gap-0.5 pl-4 text-sm text-ink-muted">
+          {features.map((f) => (
+            <li key={f}>{f}</li>
+          ))}
+        </ul>
+      ) : null}
       {total > 1 ? <p className="text-xs text-ink-muted">Tap the card again to see all {total} cards.</p> : null}
       <div>
         <Button
