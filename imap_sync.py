@@ -200,6 +200,10 @@ def remove_account(user_id: str, account_id: str) -> bool:
 # Scanning
 # ---------------------------------------------------------------------------
 
+def status(account_id: str) -> dict:
+    return scan_jobs.status(_job_key(account_id))
+
+
 def _job_key(account_id: str) -> str:
     return f"imap:{account_id}"
 

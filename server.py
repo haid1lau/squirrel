@@ -37,6 +37,7 @@ from typing import Optional
 from urllib.parse import parse_qs, quote, urlsplit
 
 import account
+import auto_scan
 import auth
 import cards
 import db
@@ -357,6 +358,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/imap":
             if user := self._require_user():
                 self._send_json(HTTPStatus.OK, imap_sync.list_accounts(user["id"]))
+        elif path == "/api/auto-scan":
+            if user := self._require_user():
+                self._send_json(HTTPStatus.OK, auto_scan.status(user["id"]))
         elif path == "/api/cards":
             if user := self._require_user():
                 with db.connect() as conn:
@@ -462,6 +466,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, {"ok": True})
             else:
                 self._error(HTTPStatus.NOT_FOUND, "That email account is no longer connected.")
+        elif path == "/api/auto-scan":
+            if not isinstance(data.get("enabled"), bool):
+                self._error(HTTPStatus.BAD_REQUEST, "enabled must be true or false.")
+                return
+            auto_scan.set_enabled(user["id"], data["enabled"])
+            if data["enabled"]:
+                auto_scan.maybe_start(user["id"])
+            self._send_json(HTTPStatus.OK, auto_scan.status(user["id"]))
         elif path == "/api/timezone":
             try:
                 with db.connect() as conn:
@@ -490,11 +502,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def _session_info(self) -> None:
         user = self._current_user()
+        if user:
+            auto_scan.maybe_start(user["id"])  # the app was opened while signed in
         self._send_json(HTTPStatus.OK, {
             "user": user,
             "google_enabled": config.GOOGLE_ENABLED,
             "microsoft_enabled": config.MICROSOFT_ENABLED,
             "gmail": gmail_sync.connection(user["id"]) if user else None,
+            "auto_scan": auto_scan.status(user["id"]) if user else None,
         })
 
     def _register(self, data: dict) -> None:

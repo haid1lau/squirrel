@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { AcornRain } from './components/acorn/AcornRain'
 import { CategoryArtSprite } from './components/CategoryArt'
 import { Fireflies } from './components/Fireflies'
@@ -6,9 +6,10 @@ import { Header } from './components/Header'
 import { Link } from './components/Link'
 import { Woodland } from './components/Woodland'
 import { useBenefits } from './hooks/useBenefits'
-import type { Session, User } from './lib/api'
+import { api, type AutoScanStatus, type Session, type User } from './lib/api'
+import { SCAN_POLL_MS } from './components/ScanStatus'
 import { VerifyEmailBanner } from './components/VerifyEmailBanner'
-import { PAGES, usePath } from './lib/router'
+import { PAGES, navigate, usePath } from './lib/router'
 import { useToast } from './lib/toast'
 import { AssistantPage } from './pages/AssistantPage'
 import { BenefitsPage } from './pages/BenefitsPage'
@@ -49,6 +50,36 @@ export default function App({
   const { benefits, error, reload, upsert, remove } = useBenefits()
   const path = usePath()
   const page = PAGES.find((p) => p.path === path)
+
+  // The daily scan starts on the server when the app loads (or when it's turned on); follow it here,
+  // so the benefit list refreshes whichever page is open.
+  const [autoScan, setAutoScan] = useState<AutoScanStatus | null>(session.auto_scan)
+  useEffect(() => setAutoScan(session.auto_scan), [session.auto_scan])
+  const autoScanFinished = useEffectEvent((s: AutoScanStatus) => {
+    reload()
+    const found = s.added + s.needs_review
+    if (found)
+      toast('success', `Daily scan found ${found} new benefit${found === 1 ? '' : 's'}.`, {
+        label: s.needs_review ? 'Review' : 'See them',
+        onClick: () => navigate(s.needs_review ? '/#review' : '/benefits'),
+      })
+    else if (s.memberships) toast('success', 'Daily scan found loyalty memberships to confirm in the review queue.')
+    if (s.errors) toast('error', 'The daily scan couldn’t finish every inbox. See Connections for details.')
+  })
+  const autoScanRunning = autoScan?.running ?? false
+  useEffect(() => {
+    if (!autoScanRunning) return
+    const id = window.setInterval(async () => {
+      try {
+        const s = await api.autoScanStatus()
+        setAutoScan(s)
+        if (!s.running) autoScanFinished(s)
+      } catch {
+        // Try again at the next tick; the inbox panels show their own errors.
+      }
+    }, SCAN_POLL_MS)
+    return () => window.clearInterval(id)
+  }, [autoScanRunning])
 
   // One-off message after returning from Google or Microsoft (the ref stops StrictMode showing it twice).
   const noticeShown = useRef(false)
@@ -100,7 +131,13 @@ export default function App({
         ) : path === '/assistant' ? (
           <AssistantPage benefits={benefits} />
         ) : path === '/connections' ? (
-          <ConnectionsPage session={session} onBenefitsChanged={reload} onSessionChange={onSessionChange} />
+          <ConnectionsPage
+            session={session}
+            onBenefitsChanged={reload}
+            onSessionChange={onSessionChange}
+            autoScan={autoScan}
+            onAutoScanChange={setAutoScan}
+          />
         ) : path === '/' ? (
           <DashboardPage
             user={user}

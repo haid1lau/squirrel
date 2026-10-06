@@ -39,8 +39,11 @@ CREATE TABLE IF NOT EXISTS users (
     -- a reset link sent to it). NULL means never: anyone could have typed it.
     email_verified_at TEXT,
     -- Last time the user used the app (auth.user_for_session, at most hourly).
-    -- Automatic scans skip accounts idle for scan_jobs.ACTIVE_DAYS.
-    last_active_at TEXT
+    last_active_at TEXT,
+    -- The daily scan (auto_scan.py): off (0) until the user turns it on, and
+    -- the user's local date it last started.
+    auto_scan         INTEGER NOT NULL DEFAULT 0,
+    auto_scan_last_on TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -218,7 +221,8 @@ def init() -> None:
         _add_columns(conn, "processed_emails", {"done": "INTEGER NOT NULL DEFAULT 1",
                                                 "failures": "INTEGER NOT NULL DEFAULT 0",
                                                 "filtered": "INTEGER NOT NULL DEFAULT 0"})
-        _add_columns(conn, "users", {"last_active_at": "TEXT"})
+        _add_columns(conn, "users", {"last_active_at": "TEXT", "auto_scan": "INTEGER NOT NULL DEFAULT 0",
+                                     "auto_scan_last_on": "TEXT"})
         _add_benefit_types(conn)
 
 

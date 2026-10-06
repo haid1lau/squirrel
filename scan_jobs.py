@@ -18,8 +18,6 @@ Limits on what reaches the AI model (and so on API cost):
 - Each user's emails sent to the model are capped per day (DAILY_EMAIL_CAP),
   across every scan and provider, counted in the database. Emails over the cap
   wait for a later scan.
-- Automatic scans should only run for users who've used the app in the last
-  ACTIVE_DAYS days (active_user_ids).
 
 Scan progress lives in memory, so restarting the server mid-scan loses it
 (emails already read stay processed).
@@ -34,7 +32,7 @@ import sqlite3
 import threading
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import asdict
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 from typing import Callable, Iterable
 
 import db
@@ -52,7 +50,6 @@ MAX_EMAILS_PER_SCAN = 50  # caps API cost and wait time per press; the next scan
 AI_WORKERS = 5  # emails read by the AI model at the same time
 MAX_TRIES = 3  # times the AI model may fail on one email before it's skipped
 DAILY_EMAIL_CAP = 100  # emails sent to the AI model per user per day (their local date), all scans together
-ACTIVE_DAYS = 30  # automatic scans skip users who haven't used the app for this long
 
 # looks_promotional: an email is skipped as a marketing blast when it has an
 # unsubscribe link, at least one other marketing phrase, and none of the
@@ -104,11 +101,6 @@ def _release_ai_email(user_id: str, today: date) -> None:
         conn.execute("UPDATE ai_email_usage SET emails = MAX(emails - 1, 0) WHERE user_id = ? AND day = ?",
                      (user_id, today.isoformat()))
 
-
-def active_user_ids(conn: sqlite3.Connection) -> list[str]:
-    """Users who've used the app in the last ACTIVE_DAYS days: the ones automatic scans should cover."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=ACTIVE_DAYS)).isoformat(timespec="seconds")
-    return [r["id"] for r in conn.execute("SELECT id FROM users WHERE last_active_at >= ?", (cutoff,))]
 
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()

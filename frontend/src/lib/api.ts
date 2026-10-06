@@ -137,6 +137,18 @@ export interface Session {
   google_enabled: boolean
   microsoft_enabled: boolean
   gmail: GmailConnection | null
+  auto_scan: AutoScanStatus | null
+}
+
+/** The daily scan (auto_scan.py): on or off, and the scans it last started. */
+export interface AutoScanStatus {
+  enabled: boolean
+  running: boolean
+  added: number
+  needs_review: number
+  memberships: number
+  /** Inboxes whose scan stopped with an error. */
+  errors: number
 }
 
 export interface ScanStatus {
@@ -259,6 +271,8 @@ export const api = {
   scanOutlook: () => request<ScanStatus>('/api/outlook/scan', post({})),
   disconnectOutlook: () => request<{ ok: true; remove_access_url: string }>('/api/outlook/disconnect', post({})),
 
+  autoScanStatus: () => request<AutoScanStatus>('/api/auto-scan'),
+  setAutoScan: (enabled: boolean) => request<AutoScanStatus>('/api/auto-scan', post({ enabled })),
   imapAccounts: () => request<ImapAccount[]>('/api/imap'),
   connectImap: (email: string, password: string, host: string) =>
     request<ImapAccount>('/api/imap', post({ email, password, host })),
