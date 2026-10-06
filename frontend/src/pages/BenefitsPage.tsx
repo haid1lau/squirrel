@@ -3,6 +3,7 @@ import { Fragment, useMemo, useRef, useState } from 'react'
 import { BenefitActions } from '../components/BenefitActions'
 import { TicketDetail, TicketStub } from '../components/BenefitTicket'
 import { EditBenefitForm } from '../components/EditBenefitForm'
+import { RecentlyRemoved } from '../components/RecentlyRemoved'
 import { ScanCodeDialog } from '../components/ScanCodeDialog'
 import { Link } from '../components/Link'
 import { Button } from '../components/ui/Button'
@@ -552,6 +553,8 @@ export function BenefitsPage({ benefits, error, onRetry, onUpdated, onRemoved }:
           </ul>
         </Card>
       ) : null}
+
+      <RecentlyRemoved activeCount={benefits?.length} onRestored={onUpdated} />
     </div>
   )
 }

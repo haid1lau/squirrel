@@ -15,7 +15,7 @@ import os
 import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Iterator, Optional
 
 from cryptography.fernet import Fernet
@@ -24,6 +24,7 @@ from config import INSTANCE_DIR
 
 DB_PATH = INSTANCE_DIR / "benefitapp.db"
 KEY_PATH = INSTANCE_DIR / "secret.key"
+REMOVED_KEEP_DAYS = 30  # removed benefits can be restored for this long, then they're deleted for good
 
 SCHEMA = """
 PRAGMA journal_mode = WAL;
@@ -150,9 +151,13 @@ CREATE TABLE IF NOT EXISTS benefits (
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     source     TEXT NOT NULL,       -- 'gmail', 'outlook', 'imap', 'loyalty', 'card' or 'manual' (added by the user)
     source_ref TEXT NOT NULL,
-    status     TEXT NOT NULL DEFAULT 'active',  -- 'active' or 'dismissed'
+    -- 'active'; 'dismissed' (removed, can be restored for REMOVED_KEEP_DAYS); or
+    -- 'deleted': removed for good, data emptied. The row stays, with its
+    -- source_ref, so scans and card or loyalty checks don't add it back.
+    status     TEXT NOT NULL DEFAULT 'active',
     data       TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    dismissed_at TEXT,                  -- when it was removed
     UNIQUE (user_id, source_ref)
 );
 
@@ -221,6 +226,9 @@ def init() -> None:
         _add_columns(conn, "processed_emails", {"done": "INTEGER NOT NULL DEFAULT 1",
                                                 "failures": "INTEGER NOT NULL DEFAULT 0",
                                                 "filtered": "INTEGER NOT NULL DEFAULT 0"})
+        if _add_columns(conn, "benefits", {"dismissed_at": "TEXT"}):
+            # Removed before this column: they get the full time in Recently removed from now.
+            conn.execute("UPDATE benefits SET dismissed_at = ? WHERE status = 'dismissed'", (now_iso(),))
         _add_columns(conn, "users", {"last_active_at": "TEXT", "auto_scan": "INTEGER NOT NULL DEFAULT 0",
                                      "auto_scan_last_on": "TEXT"})
         _add_benefit_types(conn)
@@ -341,11 +349,45 @@ def update_benefit_data(conn: sqlite3.Connection, user_id: str, benefit_id: str,
 
 
 def dismiss_benefit(conn: sqlite3.Connection, user_id: str, benefit_id: str) -> bool:
+    """Removes a benefit. It stays in Recently removed for REMOVED_KEEP_DAYS, then is deleted for good."""
     cur = conn.execute(
-        "UPDATE benefits SET status = 'dismissed' WHERE id = ? AND user_id = ? AND status = 'active'",
-        (benefit_id, user_id),
+        "UPDATE benefits SET status = 'dismissed', dismissed_at = ? WHERE id = ? AND user_id = ? AND status = 'active'",
+        (now_iso(), benefit_id, user_id),
     )
     return cur.rowcount == 1
+
+
+def restore_benefit(conn: sqlite3.Connection, user_id: str, benefit_id: str) -> Optional[dict]:
+    """Brings back a removed benefit still in Recently removed. Returns it, or None if it's gone."""
+    purge_removed_benefits(conn)
+    cur = conn.execute(
+        "UPDATE benefits SET status = 'active', dismissed_at = NULL "
+        "WHERE id = ? AND user_id = ? AND status = 'dismissed'",
+        (benefit_id, user_id),
+    )
+    return get_benefit(conn, user_id, benefit_id) if cur.rowcount == 1 else None
+
+
+def list_removed_benefits(conn: sqlite3.Connection, user_id: str) -> list[dict]:
+    """Recently removed benefits, newest first, each with removed_at and delete_on (the date it goes for good)."""
+    purge_removed_benefits(conn)
+    rows = conn.execute(
+        "SELECT * FROM benefits WHERE user_id = ? AND status = 'dismissed' ORDER BY dismissed_at DESC, rowid DESC",
+        (user_id,),
+    )
+    return [{**_row_to_record(r), "removed_at": r["dismissed_at"],
+             "delete_on": (datetime.fromisoformat(r["dismissed_at"]) + timedelta(days=REMOVED_KEEP_DAYS)).isoformat()}
+            for r in rows]
+
+
+def purge_removed_benefits(conn: sqlite3.Connection) -> int:
+    """Deletes for good (every user) benefits removed more than REMOVED_KEEP_DAYS ago. Returns how many."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=REMOVED_KEEP_DAYS)).isoformat(timespec="seconds")
+    return conn.execute(
+        "UPDATE benefits SET status = 'deleted', data = '{}', dismissed_at = NULL "
+        "WHERE status = 'dismissed' AND dismissed_at < ?",
+        (cutoff,),
+    ).rowcount
 
 
 # ---------------------------------------------------------------------------

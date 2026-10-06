@@ -75,7 +75,13 @@ export function BenefitActions({ benefit, onEdit, onUpdated, onRemoved }: Benefi
     try {
       await api.dismiss(benefit.id)
       onRemoved(benefit.id)
-      toast('info', isCard ? `Hid “${name}” until it resets.` : `Removed “${name}”.`)
+      toast('info', isCard ? `Hid “${name}” until it resets.` : `Removed “${name}”.`, {
+        label: 'Undo',
+        onClick: () =>
+          api
+            .restoreBenefit(benefit.id)
+            .then(onUpdated, (e) => toast('error', `Couldn’t undo: ${errorMessage(e)}`)),
+      })
     } catch (e) {
       setError(errorMessage(e))
       disarm()
