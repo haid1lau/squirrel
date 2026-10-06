@@ -180,6 +180,13 @@ export interface ImapAccount {
   scan: ScanStatus
 }
 
+/** A benefit in Recently removed: restorable until delete_on. */
+export interface RemovedBenefit extends Benefit {
+  removed_at: string
+  /** When the server deletes it for good (removed_at + 30 days). */
+  delete_on: string
+}
+
 export interface CatalogCard {
   key: string
   name: string
@@ -260,6 +267,8 @@ export const api = {
   approve: (id: string, expiryDate: string) =>
     request<Benefit>(`/api/benefits/${id}/approve`, post({ expiry_date: expiryDate })),
   dismiss: (id: string) => request<{ ok: true }>(`/api/benefits/${id}/dismiss`, post({})),
+  removedBenefits: () => request<RemovedBenefit[]>('/api/benefits/removed'),
+  restoreBenefit: (id: string) => request<Benefit>(`/api/benefits/${id}/restore`, post({})),
   createBenefit: (fields: BenefitEdit) => request<Benefit>('/api/benefits', post(fields)),
   updateBenefit: (id: string, changes: BenefitEdit) => request<Benefit>(`/api/benefits/${id}/update`, post(changes)),
   quickUpdate: (id: string, change: QuickChange) => request<Benefit>(`/api/benefits/${id}/quick`, post(change)),

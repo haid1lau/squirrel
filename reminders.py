@@ -231,6 +231,13 @@ def _loop() -> None:
             run_due()
         except Exception as e:  # noqa: BLE001 - keep checking even if one run fails
             print(f"  Reminder check failed: {e}", flush=True)
+        try:
+            # Same timer: benefits removed over db.REMOVED_KEEP_DAYS ago are deleted for good,
+            # even for users who never open Recently removed.
+            with db.connect() as conn:
+                db.purge_removed_benefits(conn)
+        except Exception as e:  # noqa: BLE001
+            print(f"  Clearing removed benefits failed: {e}", flush=True)
         time.sleep(CHECK_EVERY_SECONDS)
 
 

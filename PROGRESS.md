@@ -118,6 +118,8 @@ All except `/api/session` and the `/api/auth/*` routes need a signed-in session.
 | GET | `/api/outlook/status` | Outlook connection and latest scan |
 | POST | `/api/outlook/scan`, `/api/outlook/disconnect` | Scan (**calls OpenAI**; counts toward the 10 scans an hour); disconnect (benefits found are kept) |
 | GET | `/api/benefits` | User's active benefits (card perks refreshed for the current period) |
+| GET | `/api/benefits/removed` | Recently removed benefits (30 days), newest first, with `removed_at` and `delete_on` |
+| POST | `/api/benefits/<id>/restore` | Brings back a recently removed benefit |
 | POST | `/api/benefits/<id>/approve`, `/dismiss` | Review queue. Dismissed items are kept hidden so scans don't re-add them. `dismiss` is also "Remove", and "Hide until it resets" for card perks. |
 | POST | `/api/benefits` | Add a benefit by hand (`source: manual`). Same fields and checks as `update`, including an optional whole-number `points` balance instead of `value`. |
 | POST | `/api/benefits/<id>/update` | Edit name, provider, category, value, expiry date, terms. Also clears the review flag. |
@@ -556,6 +558,14 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - **Left out on purpose:** monthly cashback caps as tracked perks (a cap isn't money you lose, and many reset on the statement month, whose dates Squirrel doesn't know); the Amex Ascend's lounge passes (in an older terms PDF but not on Amex's current page).
 - The dropdown groups cards under Singapore and United States. Each card has a plain colour in the wallet (no logos). Each card says when it was last checked (`SG_CHECKED`, `CATALOG_CHECKED`).
 
+### 32. Recently removed, with undo (6 October 2026)
+- **Removing a benefit is no longer final.** It goes to **Recently removed**, a collapsible list at the bottom of All Benefits, with the date it was removed, the date it will be deleted, and a **Restore** button. The "Removed …" toast also has **Undo**. This covers everything removed: Remove, "Hide until it resets" on card perks, and dismissals in the review queue.
+- **After 30 days it's deleted for good** (`db.REMOVED_KEEP_DAYS`). The reminder thread's 15-minute check also runs `db.purge_removed_benefits`, so this happens even if the user never opens the list; the list and Restore purge first too. A deleted benefit's details are wiped (`status = 'deleted'`, `data = '{}'`), but the row and its `source_ref` stay, so a rescan, the loyalty check or the card perks can't add it back.
+- New column `benefits.dismissed_at`. Benefits removed before this change were given the date of the upgrade, so they have the full 30 days from 6 October 2026.
+- A removed card perk still disappears when its period resets (as before), since the next period's perk is a new benefit.
+- API: `GET /api/benefits/removed`, `POST /api/benefits/<id>/restore`.
+- Checked on a copy of the database (remove, restore, the 30-day deletion, and a deleted benefit not coming back) and in the browser on the demo account (remove from the ⋯ menu, Restore from the list, Undo on the toast; the demo data was left as it was).
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
@@ -574,7 +584,7 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - **Long emails are cut to 8,000 characters** (a known limitation for long forwarded threads).
 - **SQLite, one server process.** Fine for testers; not built for many users or several servers.
 - **Answers appear all at once.** The skill recommends streaming them, which would need the server to stream.
-- **Removed benefits can't be restored** from the app. Filters on the All benefits page aren't kept in the URL.
+- Filters on the All benefits page aren't kept in the URL.
 - **The project isn't a git repository**, so there's no history or undo. **The database isn't backed up either:** the copies made before this session's migrations were in a temporary folder and won't last. `instance/` holds all user data and the encryption key (`secret.key`); losing the key makes saved Gmail tokens and IMAP passwords unreadable.
 
 ---

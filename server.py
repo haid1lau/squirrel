@@ -336,6 +336,10 @@ class Handler(BaseHTTPRequestHandler):
             if user := self._require_user():
                 today = user_today(user["id"])
                 self._send_json(HTTPStatus.OK, [with_days(r, today) for r in user_benefits(user["id"], today)])
+        elif path == "/api/benefits/removed":
+            if user := self._require_user():
+                with db.connect() as conn:
+                    self._send_json(HTTPStatus.OK, db.list_removed_benefits(conn, user["id"]))
         elif path == "/api/digest":
             if user := self._require_user():
                 self._digest(user)
@@ -491,6 +495,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._error(HTTPStatus.NOT_FOUND, "That card is no longer in your list.")
         elif m := re.fullmatch(r"/api/benefits/([0-9a-f]{12})/(approve|dismiss)", path):
             self._review(user, m.group(1), m.group(2), data)
+        elif m := re.fullmatch(r"/api/benefits/([0-9a-f]{12})/restore", path):
+            with db.connect() as conn:
+                record = db.restore_benefit(conn, user["id"], m.group(1))
+                today = reminders.user_today(conn, user["id"])
+            if record is None:
+                self._error(HTTPStatus.NOT_FOUND, "That benefit was deleted for good and can't be restored.")
+            else:
+                self._send_json(HTTPStatus.OK, with_days(record, today))
         elif m := re.fullmatch(r"/api/benefits/([0-9a-f]{12})/update", path):
             self._update_benefit(user, m.group(1), data)
         elif m := re.fullmatch(r"/api/benefits/([0-9a-f]{12})/quick", path):
