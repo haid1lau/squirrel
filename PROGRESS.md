@@ -80,7 +80,7 @@ cd frontend && npm run build && cd ..   # rebuild the React app after frontend c
 | `mailer.py` | Sends the app's own emails (reset links, reminders) over SMTP; prints them in the terminal when SMTP isn't set up. |
 | `reminders.py` | Emails users before benefits expire: each benefit's reminder choice, the user's time zone, which reminders are due, the email, and the 15-minute background check. |
 | `google_api.py` | Google OAuth (PKCE) and the Gmail API calls, using `urllib` only. |
-| `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step (an email the AI fails on 3 times is skipped). |
+| `scan_jobs.py` | Shared by every inbox scan: search keywords and limits, background jobs, and the extract → store step (an email the AI fails on 3 times is skipped). Also the cost safeguards: the marketing-email filter, the daily cap of 100 AI-read emails per user, and `active_user_ids` (section 29). |
 | `limits.py` | Per-user hourly caps on the requests that call OpenAI: 30 questions, 10 digests, 10 scans. In memory. |
 | `account.py` | Deleting an account: confirm, refuse while a scan runs, revoke Gmail, remove Outlook and IMAP, then delete the user (everything else cascades). |
 | `microsoft_api.py` | Microsoft sign-in (PKCE) and the Microsoft Graph mail calls for Outlook, using `urllib` only. |
@@ -531,6 +531,13 @@ verification both need these).
   once and not twice; Google sign-in afterwards kept the password. In Chrome: banner, "Wrong address?" form, the
   confirmation page (token removed from the address bar) and the banner gone afterwards.
 
+### 29. Cost safeguards before automatic scans (6 October 2026)
+Three limits on what reaches OpenAI, ready for the planned daily automatic scan. All are in `scan_jobs.py`.
+- **Daily cap:** at most `DAILY_EMAIL_CAP` (100) emails per user per day go to the AI model, across Gmail, Outlook and IMAP scans together. The day is the user's own date. The count is kept in the database (`ai_email_usage`), so a restart doesn't reset it, and each email is claimed in one SQL statement, so scans running at once can't go over. Emails over the cap wait for a later scan, and the scan result says "That's the most Squirrel reads in a day." A failed AI call still counts (it was paid for); an error that stops the whole scan (such as a missing key) gives its slot back.
+- **Marketing filter (no AI):** `looks_promotional` skips an email that has an unsubscribe link and a marketing phrase ("% off", "shop now", "view in browser", …) but none of the phrases that point to the user's own benefit ("your voucher", "valid until", "you've earned", "promo code", …). It's cautious on purpose. Skipped emails are marked `filtered = 1` in `processed_emails` and never checked again; to have them read again after changing the filter, delete those rows. The scan result shows "N marketing emails skipped". Filtered emails don't count toward the daily cap.
+- **Active users:** `users.last_active_at` is updated whenever a signed-in user uses the app (at most hourly). `scan_jobs.active_user_ids` returns users active in the last `ACTIVE_DAYS` (30) days. Nothing uses it yet: the automatic scanner will. Existing users get a time the next time they open the app.
+- Checked with the AI mocked, on a copy of the database: the filter cases, the cap stopping at its limit in a scan and across days, and the activity time being recorded.
+
 ## Known gaps and limitations
 
 - **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
@@ -562,7 +569,7 @@ verification both need these).
 4. **Verify the card catalog and loyalty programs** against current terms and sending domains, and fix `cards.py` / `loyalty.py`. Add more programs (non-US hotels and airlines) as needed.
 5. **Custom cards and perks.**
 6. **Add tests:** pytest for `validate()`, auth, OAuth state handling, the period maths and the endpoints (Google + OpenAI mocked); React Testing Library for sign-in, connections and the new pages.
-7. **Automatic email scans** (daily, Gmail and IMAP), instead of only when the user presses "Scan inbox".
+7. **Automatic email scans** (daily, Gmail, Outlook and IMAP), instead of only when the user presses "Scan inbox". The cost safeguards are done (section 29): use `scan_jobs.active_user_ids` to choose whom to scan.
 8. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026); the owner will test once they have an Outlook address.
 9. **Build an extraction eval** from real benefit emails.
 10. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.

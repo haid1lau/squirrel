@@ -146,8 +146,14 @@ export interface ScanStatus {
   added?: number
   needs_review?: number
   skipped?: number
+  /** Marketing emails skipped without the AI model. */
+  filtered?: number
   failed?: number
   remaining?: number
+  /** Every email within the scan limit has been read, but older matching ones exist. */
+  limit_reached?: boolean
+  /** Today's cap on emails read by the AI model is used up; the rest wait for tomorrow. */
+  daily_limit_reached?: boolean
   /** Loyalty memberships newly found from who emails the user. */
   memberships?: number
   message?: string | null

@@ -129,11 +129,10 @@ def _scan(user_id: str, job: dict) -> None:
 
     scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(access_token, today), today))
     skipped = microsoft_api.skipped_folder_ids(access_token)
-    found = microsoft_api.search_messages(access_token, search_query(today), scan_jobs.SEARCH_LIMIT)
-    candidates = [m["id"] for m in found
-                  if m.get("parentFolderId") not in skipped and f"outlook:{m['id']}" not in done]
-    batch = candidates[:scan_jobs.MAX_EMAILS_PER_SCAN]
-    scan_jobs.update(job, total=len(batch), remaining=len(candidates) - len(batch))
+    found = microsoft_api.search_messages(access_token, search_query(today), scan_jobs.SEARCH_LIMIT + 1)
+    batch = [m["id"] for m in scan_jobs.take_batch(
+        user_id, job, found, lambda m: m.get("parentFolderId") not in skipped and f"outlook:{m['id']}" not in done,
+        today)]
 
     def tasks():
         for message_id in batch:

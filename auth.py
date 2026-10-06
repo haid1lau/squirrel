@@ -28,6 +28,7 @@ import db
 
 SESSION_COOKIE = "benefitapp_session"
 SESSION_DAYS = 30
+ACTIVE_NOTE_INTERVAL = timedelta(hours=1)  # how often users.last_active_at is updated
 MIN_PASSWORD_LENGTH = 10
 
 _SCRYPT = {"n": 2**14, "r": 8, "p": 1}
@@ -300,6 +301,12 @@ def user_for_session(token: Optional[str]) -> Optional[dict]:
             "WHERE sessions.token_hash = ? AND sessions.expires_at > ?",
             (_token_hash(token), db.now_iso()),
         ).fetchone()
+        if row:
+            # Noted at most hourly, so most requests don't write. Automatic scans skip idle accounts.
+            cutoff = (datetime.now(timezone.utc) - ACTIVE_NOTE_INTERVAL).isoformat(timespec="seconds")
+            conn.execute("UPDATE users SET last_active_at = ? WHERE id = ? "
+                         "AND (last_active_at IS NULL OR last_active_at < ?)",
+                         (db.now_iso(), row["id"], cutoff))
     return public_user(row) if row else None
 
 

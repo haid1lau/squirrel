@@ -368,14 +368,12 @@ def _scan(user_id: str, account_id: str, job: dict) -> None:
         uidvalidity = (imap.response("UIDVALIDITY")[1] or [b"0"])[0].decode()
         scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(imap), today))
         uids = _search(imap, row["host"], today)
-        uids = sorted(uids, key=int, reverse=True)[:scan_jobs.SEARCH_LIMIT]  # newest first
+        uids = sorted(uids, key=int, reverse=True)[:scan_jobs.SEARCH_LIMIT + 1]  # newest first
 
         def key(uid: str) -> str:
             return f"imap:{account_id}:{uidvalidity}:{uid}"
 
-        candidates = [u for u in uids if key(u) not in done]
-        batch = candidates[:scan_jobs.MAX_EMAILS_PER_SCAN]
-        scan_jobs.update(job, total=len(batch), remaining=len(candidates) - len(batch))
+        batch = scan_jobs.take_batch(user_id, job, uids, lambda u: key(u) not in done, today)
 
         def tasks():
             for uid in batch:

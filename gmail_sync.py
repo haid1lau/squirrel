@@ -122,10 +122,8 @@ def _scan(user_id: str, job: dict) -> None:
 
     access_token = google_api.refresh_access_token(db.decrypt(row["refresh_token_enc"]))
     scan_jobs.update(job, memberships=loyalty.detect(user_id, _loyalty_finder(access_token), today))
-    candidates = [m for m in google_api.search_messages(access_token, SEARCH_QUERY, scan_jobs.SEARCH_LIMIT)
-                  if m["id"] not in done]
-    batch = candidates[:scan_jobs.MAX_EMAILS_PER_SCAN]
-    scan_jobs.update(job, total=len(batch), remaining=len(candidates) - len(batch))
+    matches = google_api.search_messages(access_token, SEARCH_QUERY, scan_jobs.SEARCH_LIMIT + 1)
+    batch = scan_jobs.take_batch(user_id, job, matches, lambda m: m["id"] not in done, today)
 
     def tasks():
         for message in batch:

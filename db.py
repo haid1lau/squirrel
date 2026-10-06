@@ -37,7 +37,10 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TEXT NOT NULL,
     -- When the user proved they own the address (Google said so, or they used
     -- a reset link sent to it). NULL means never: anyone could have typed it.
-    email_verified_at TEXT
+    email_verified_at TEXT,
+    -- Last time the user used the app (auth.user_for_session, at most hourly).
+    -- Automatic scans skip accounts idle for scan_jobs.ACTIVE_DAYS.
+    last_active_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -105,12 +108,24 @@ CREATE TABLE IF NOT EXISTS imap_accounts (
 -- 'imap:<account id>:<uidvalidity>:<uid>'. done = 1 once it's been read, so
 -- it's never read again; one the model keeps failing on is tried again by
 -- later scans until failures reaches scan_jobs.MAX_TRIES, then skipped.
+-- filtered = 1: scan_jobs.looks_promotional skipped it without the AI model.
+-- To have those read again after changing the filter, delete those rows.
 CREATE TABLE IF NOT EXISTS processed_emails (
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message_id TEXT NOT NULL,
     done       INTEGER NOT NULL DEFAULT 1,
     failures   INTEGER NOT NULL DEFAULT 0,
+    filtered   INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, message_id)
+);
+
+-- Emails sent to the AI model per user per day (the user's local date), for
+-- scan_jobs.DAILY_EMAIL_CAP. Kept in the database so a restart doesn't reset it.
+CREATE TABLE IF NOT EXISTS ai_email_usage (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day     TEXT NOT NULL,
+    emails  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day)
 );
 
 CREATE TABLE IF NOT EXISTS user_cards (
@@ -200,8 +215,10 @@ def init() -> None:
             # Email verification arrived on 6 October 2026. The owner knows everyone who signed up
             # before then, so their accounts count as confirmed.
             conn.execute("UPDATE users SET email_verified_at = COALESCE(email_verified_at, created_at)")
-        _add_columns(conn, "processed_emails",
-                     {"done": "INTEGER NOT NULL DEFAULT 1", "failures": "INTEGER NOT NULL DEFAULT 0"})
+        _add_columns(conn, "processed_emails", {"done": "INTEGER NOT NULL DEFAULT 1",
+                                                "failures": "INTEGER NOT NULL DEFAULT 0",
+                                                "filtered": "INTEGER NOT NULL DEFAULT 0"})
+        _add_columns(conn, "users", {"last_active_at": "TEXT"})
         _add_benefit_types(conn)
 
 

@@ -10,15 +10,28 @@ function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`
 }
 
+// Matches SEARCH_LIMIT and SEARCH_DAYS in scan_jobs.py.
+const LIMIT_NOTE =
+  'Squirrel checks only your newest 200 benefit emails from the past 6 months, and it has read them all.'
+// Matches DAILY_EMAIL_CAP in scan_jobs.py.
+const DAILY_NOTE = 'That’s the most Squirrel reads in a day (100 emails). Scan again tomorrow to continue.'
+
 function scanSummary(s: ScanStatus) {
   const parts = [
     `${plural(s.added ?? 0, 'benefit')} added`,
     `${s.needs_review ?? 0} to review`,
     `${plural(s.skipped ?? 0, 'email')} weren’t benefits`,
   ]
+  if (s.filtered) parts.push(`${plural(s.filtered, 'marketing email')} skipped`)
   if (s.failed) parts.push(`${plural(s.failed, 'email')} couldn’t be read (tried again next scan, up to 3 times)`)
-  let text = s.checked ? `Checked ${plural(s.checked, 'email')}: ${parts.join(', ')}.` : 'No new benefit emails found.'
-  if (s.remaining) text += ` ${plural(s.remaining, 'older email')} still to check — scan again to continue.`
+  if (!s.checked) {
+    if (s.daily_limit_reached) return DAILY_NOTE
+    return s.limit_reached ? LIMIT_NOTE : 'No new benefit emails found.'
+  }
+  let text = `Checked ${plural(s.checked, 'email')}: ${parts.join(', ')}.`
+  if (s.daily_limit_reached) text += ` ${DAILY_NOTE}`
+  else if (s.remaining) text += ` ${plural(s.remaining, 'older email')} still to check — scan again to continue.`
+  if (s.limit_reached) text += ` ${LIMIT_NOTE}`
   return text
 }
 
@@ -63,7 +76,11 @@ function ScanFound({ scan }: { scan: ScanStatus }) {
   return (
     <div className="grid animate-rise gap-1 rounded-xl bg-ok-soft p-3 text-sm">
       <p className="text-base font-semibold text-ink">
-        {found ? `Found ${plural(found, 'new benefit')}` : 'No new benefits this time'}
+        {found
+          ? `Found ${plural(found, 'new benefit')}`
+          : scan.limit_reached || scan.daily_limit_reached
+            ? 'Scan limit reached'
+            : 'No new benefits this time'}
       </p>
       <p className="text-ink-muted">{scanSummary(scan)}</p>
       {found ? (
@@ -89,12 +106,13 @@ function ScanFound({ scan }: { scan: ScanStatus }) {
 /** What the last scan found, or why it stopped. */
 export function ScanResult({ scan }: { scan: ScanStatus }) {
   // Memberships are found before the AI step, so report them even if that step failed.
-  const memberships = scan.state !== 'running' && scan.memberships ? (
-    <Message tone="success">
-      Found {plural(scan.memberships, 'loyalty membership')} from who emails you. Confirm{' '}
-      {scan.memberships === 1 ? 'it' : 'them'} in the review queue.
-    </Message>
-  ) : null
+  const memberships =
+    scan.state !== 'running' && scan.memberships ? (
+      <Message tone="success">
+        Found {plural(scan.memberships, 'loyalty membership')} from who emails you. Confirm{' '}
+        {scan.memberships === 1 ? 'it' : 'them'} in the review queue.
+      </Message>
+    ) : null
   return (
     <>
       {memberships}
