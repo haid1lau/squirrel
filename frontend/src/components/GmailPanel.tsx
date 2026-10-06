@@ -99,8 +99,7 @@ export function GmailPanel({ googleEnabled, connection, onConnectionChange, onSc
         ) : !connection ? (
           <>
             <p className="text-ink-muted">
-              Connect Gmail in one click through Google. For now Google only allows this for invited testers; anyone can
-              add Gmail under Email accounts with an app password instead.
+              Connect Gmail in one click through Google.
             </p>
             <div>
               <Button
