@@ -5,6 +5,7 @@ import { api, errorMessage, type AskEntry, type Benefit } from '../lib/api'
 import { isArchived } from '../lib/usage'
 import { useToast } from '../lib/toast'
 import { AiLabel } from './AiLabel'
+import { AnswerText } from './AnswerText'
 import { CategoryArt } from './CategoryArt'
 import { Link } from './Link'
 import { UrgencyBadge } from './UrgencyBadge'
@@ -14,28 +15,6 @@ import { Message } from './ui/Message'
 import { Skeleton } from './ui/Skeleton'
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
-
-/**
- * The answer in pieces (its lines, or its sentences if it's one paragraph), so a
- * new answer can appear one piece at a time. Only the look is staggered: the
- * whole text is in the page at once for screen readers.
- */
-function RevealedAnswer({ text }: { text: string }) {
-  const lines = text.split('\n')
-  const pieces = lines.length > 1 ? lines : text.split(/(?<=[.!?])\s+/)
-  const join = lines.length > 1 ? '\n' : ' '
-  return (
-    <>
-      {pieces.map((piece, i) => (
-        // Fixed for a given answer, so the index is a safe key.
-        <span key={i} className="animate-rise" style={{ animationDelay: `${i * 180}ms` }}>
-          {piece}
-          {i < pieces.length - 1 ? join : null}
-        </span>
-      ))}
-    </>
-  )
-}
 
 /** Tracked benefits an answer names (up to 3), shown as cards under it. */
 function mentioned(answer: string, benefits: Benefit[]) {
@@ -71,7 +50,7 @@ interface AskHistoryProps {
   /** Tracked benefits, to show the ones an answer names. */
   benefits: Benefit[] | null
   entries: AskEntry[] | null
-  /** The answer just asked for, which appears line by line. */
+  /** The answer just asked for, whose parts rise in one after another. */
   freshId?: string | null
   error: string | null
   onRetry: () => void
@@ -139,13 +118,13 @@ export function AskHistory({ benefits, entries, freshId, error, onRetry, onClear
                         {timeFormat.format(new Date(entry.created_at))}
                       </time>
                     </div>
-                    <div className="grid max-w-[92%] gap-2">
+                    <div className="grid gap-2 sm:max-w-[92%]">
                       <div>
                         <AiLabel />
                       </div>
-                      <p className="rounded-[20px_20px_20px_4px] bg-surface-2 px-4 py-3 whitespace-pre-wrap">
-                        {entry.id === freshId ? <RevealedAnswer text={entry.answer} /> : entry.answer}
-                      </p>
+                      <div className="rounded-[20px_20px_20px_4px] bg-surface-2 px-4 py-3">
+                        <AnswerText text={entry.answer} reveal={entry.id === freshId} />
+                      </div>
                       {cards.length ? (
                         <ul className="grid max-w-xl gap-2" aria-label="Benefits in this answer">
                           {cards.map((b) => (

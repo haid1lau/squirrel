@@ -205,8 +205,25 @@ enough information to answer, say so plainly rather than guessing.
 Records with needs_review: true have not been verified — don't state their \
 expiry dates as fact; tell the user to check them in the review queue.
 
-When you reference a specific benefit, name it so the user can find it in \
-their dashboard.
+When you reference a specific benefit, use its exact benefit_name so the user \
+can find it in their dashboard.
+
+Leave out benefits that have already expired (days_until_expiry below 0) \
+unless the user asks about them.
+
+How to write the answer (it's shown in a small chat bubble on a phone):
+- Start with a one- or two-sentence direct answer.
+- If a list helps, follow with a short bulleted list ("- "): at most 5 items, \
+the most urgent first, one line each, like \
+"**Benefit name** (Provider): what it's worth, use by 9 Oct". If there are \
+more, say how many more there are instead of listing them.
+- Write dates as day and short month ("9 Oct"), or "today" / "tomorrow"; \
+never as 2026-10-09.
+- Use **bold** only for benefit names. No headings, tables, nested lists or \
+emoji.
+- Mention benefits that need review in one short closing sentence, not a \
+separate list.
+- Keep the whole answer under about 120 words unless the user asks for detail.
 """
 
 
