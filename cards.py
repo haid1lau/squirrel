@@ -26,7 +26,7 @@ import reminders
 from app import ExtractedBenefit
 from dataclasses import asdict
 
-CATALOG_CHECKED = "mid-2025"  # the US cards
+CATALOG_CHECKED = "October 2026"  # the US cards, against each issuer's own card page
 SG_CHECKED = "October 2026"  # the Singapore cards, against each issuer's own pages
 COUNTRIES = {"SG": "Singapore", "US": "United States"}  # dropdown groups, in this order
 
@@ -40,9 +40,16 @@ CATALOG: dict[str, dict] = {
             {"key": "uber_cash", "name": "Uber Cash", "value": "$15 ($35 in December)", "period": "monthly",
              "type": "voucher", "category": "transport",
              "terms": "Add the card to your Uber account; unused Uber Cash doesn't roll over."},
+            {"key": "uber_one", "name": "Uber One credit", "value": "$120", "period": "calendar_year",
+             "type": "subscription", "category": "transport",
+             "terms": "An auto-renewing Uber One membership paid with the card."},
+            {"key": "walmart_plus", "name": "Walmart+ credit", "value": "$12.95 plus tax", "period": "monthly",
+             "type": "subscription", "category": "shopping",
+             "terms": "A monthly Walmart+ membership paid with the card."},
             {"key": "digital_entertainment", "name": "Digital entertainment credit", "value": "$25",
              "period": "monthly", "type": "subscription", "category": "entertainment",
-             "terms": "Enrollment required; eligible streaming and news subscriptions only."},
+             "terms": "Enrollment required; Disney+, Hulu, ESPN streaming, Peacock, Paramount+, YouTube Premium "
+                      "and TV, The New York Times and The Wall Street Journal."},
             {"key": "resy", "name": "Resy dining credit", "value": "$100", "period": "quarterly",
              "type": "membership", "category": "dining",
              "terms": "Enrollment required; at eligible US Resy restaurants."},
@@ -51,13 +58,14 @@ CATALOG: dict[str, dict] = {
              "terms": "Enrollment required; US lululemon stores and online."},
             {"key": "hotel", "name": "Hotel credit", "value": "$300", "period": "semiannual",
              "type": "voucher", "category": "travel",
-             "terms": "Prepaid Fine Hotels + Resorts or The Hotel Collection bookings through Amex Travel."},
+             "terms": "Prepaid Fine Hotels + Resorts or The Hotel Collection (2 nights or more) bookings "
+                      "through Amex Travel."},
             {"key": "airline_fee", "name": "Airline fee credit", "value": "$200", "period": "calendar_year",
              "type": "voucher", "category": "travel",
              "terms": "Incidental fees on the one airline you select each year."},
-            {"key": "clear", "name": "CLEAR Plus credit", "value": "$209", "period": "calendar_year",
+            {"key": "clear", "name": "CLEAR+ credit", "value": "$219", "period": "calendar_year",
              "type": "membership", "category": "travel",
-             "terms": "Covers a CLEAR Plus membership charged to the card."},
+             "terms": "An auto-renewing CLEAR+ membership charged to the card."},
         ],
     },
     "amex_gold": {
@@ -69,7 +77,8 @@ CATALOG: dict[str, dict] = {
              "terms": "Add the card to your Uber account; US Uber Eats orders or rides."},
             {"key": "dining", "name": "Dining credit", "value": "$10", "period": "monthly",
              "type": "membership", "category": "dining",
-             "terms": "Enrollment required; Grubhub, The Cheesecake Factory, Goldbelly, Wine.com and Five Guys."},
+             "terms": "Enrollment required; Grubhub (and Seamless), Buffalo Wild Wings, Five Guys, "
+                      "The Cheesecake Factory and Wonder."},
             {"key": "dunkin", "name": "Dunkin' credit", "value": "$7", "period": "monthly",
              "type": "voucher", "category": "dining", "terms": "Enrollment required; US Dunkin' locations."},
             {"key": "resy", "name": "Resy dining credit", "value": "$50", "period": "semiannual",
@@ -82,18 +91,23 @@ CATALOG: dict[str, dict] = {
         "name": "Chase Sapphire Reserve",
         "perks": [
             {"key": "lyft", "name": "Lyft credit", "value": "$10", "period": "monthly",
-             "type": "voucher", "category": "transport", "terms": "In-app Lyft credit; activate in the Lyft app."},
-            {"key": "doordash", "name": "DoorDash restaurant promo", "value": "$5", "period": "monthly",
-             "type": "voucher", "category": "dining", "terms": "Requires complimentary DashPass activation."},
-            {"key": "the_edit", "name": "The Edit hotel credit", "value": "$250", "period": "semiannual",
-             "type": "voucher", "category": "travel",
-             "terms": "Prepaid 2-night+ stays booked through The Edit by Chase Travel."},
+             "type": "voucher", "category": "transport",
+             "terms": "Add the card to the Lyft app and pay for rides with it; through Sep 2027."},
+            {"key": "doordash", "name": "DoorDash promos", "value": "$25 ($5 restaurant + two $10 other orders)",
+             "period": "monthly", "type": "voucher", "category": "dining",
+             "terms": "Activate the complimentary DashPass and pay with the card; unused promos don't roll over."},
+            {"key": "peloton", "name": "Peloton membership credit", "value": "$10", "period": "monthly",
+             "type": "subscription", "category": "wellness",
+             "terms": "Activation required; a Peloton membership paid with the card, through 2027."},
+            {"key": "the_edit", "name": "The Edit hotel credit", "value": "$500 (up to $250 a stay)",
+             "period": "calendar_year", "type": "voucher", "category": "travel",
+             "terms": "Prepaid stays of 2 nights or more booked through The Edit by Chase Travel."},
             {"key": "dining", "name": "Exclusive Tables dining credit", "value": "$150", "period": "semiannual",
              "type": "membership", "category": "dining",
              "terms": "At Sapphire Reserve Exclusive Tables restaurants on OpenTable."},
             {"key": "stubhub", "name": "StubHub credit", "value": "$150", "period": "semiannual",
              "type": "voucher", "category": "entertainment",
-             "terms": "Activation required; StubHub and viagogo purchases."},
+             "terms": "Activation required; StubHub and viagogo purchases, through 2027."},
             {"key": "travel", "name": "Annual travel credit", "value": "$300", "period": "card_year",
              "type": "voucher", "category": "travel", "terms": "Applied automatically to travel purchases."},
         ],
@@ -102,8 +116,12 @@ CATALOG: dict[str, dict] = {
         "country": "US",
         "name": "Chase Sapphire Preferred",
         "perks": [
-            {"key": "hotel", "name": "Chase Travel hotel credit", "value": "$50", "period": "card_year",
+            {"key": "hotel", "name": "Chase Travel hotel credit", "value": "$100", "period": "card_year",
              "type": "voucher", "category": "travel", "terms": "Hotel stays booked through Chase Travel."},
+            {"key": "doordash", "name": "DoorDash non-restaurant promo", "value": "$10", "period": "monthly",
+             "type": "voucher", "category": "shopping",
+             "terms": "Activate the complimentary DashPass; one grocery, retail or other non-restaurant order, "
+                      "through 2027."},
         ],
     },
     "capital_one_venture_x": {
@@ -111,7 +129,8 @@ CATALOG: dict[str, dict] = {
         "name": "Capital One Venture X",
         "perks": [
             {"key": "travel", "name": "Capital One Travel credit", "value": "$300", "period": "card_year",
-             "type": "voucher", "category": "travel", "terms": "Bookings made through Capital One Travel."},
+             "type": "voucher", "category": "travel",
+             "terms": "Applied at checkout on Capital One Travel bookings (no miles on the credited amount)."},
         ],
     },
 }

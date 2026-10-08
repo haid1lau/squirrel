@@ -574,10 +574,28 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - **Shown to catch real bugs:** re-creating section 29's lost-lines bug, ignoring the daily cap, and letting one user restore another's benefit each made tests fail.
 - **Not covered yet:** the Gmail, Outlook and IMAP scanners themselves (they need fake mail servers), the assistant and digest (OpenAI), and the React screens.
 
+### 34. US cards checked against the issuers' pages (8 October 2026)
+
+- Checked the 5 US cards against American Express, Chase and Capital One's own card pages (`CATALOG_CHECKED`).
+- **Amex Platinum:** added the Uber One credit ($120 a calendar year) and the Walmart+ credit ($12.95 plus tax a
+  month); CLEAR+ is now $219 (was $209); the digital entertainment and hotel terms name what's eligible. The Saks
+  credit (retired 1 July 2026) was never listed. Oura wasn't on the card page, so it isn't listed.
+- **Amex Gold:** the dining credit's partners are now Grubhub (and Seamless), Buffalo Wild Wings, Five Guys, The
+  Cheesecake Factory and Wonder.
+- **Chase Sapphire Reserve:** The Edit is now up to $250 a stay, $500 a calendar year (was $250 each half); DoorDash
+  is $25 a month ($5 restaurant + two $10 other orders, was $5); added the Peloton credit ($10 a month, through 2027).
+  Not added: the 2026-only $250 select-hotel credit (the catalog has no end dates) and the $75,000-spend credits.
+  Some news sites report the $5 restaurant promo becoming $15 from 1 October 2026; Chase's page didn't show it yet.
+- **Chase Sapphire Preferred:** the hotel credit is $100 (was $50, since June 2026); added the $10 monthly DoorDash
+  non-restaurant promo.
+- **Capital One Venture X:** the $300 travel credit is now taken off at checkout on Capital One Travel, not refunded.
+- A perk already saved for the current period keeps its old value until it resets (next month for monthly credits,
+  the next anniversary for the Sapphire Preferred hotel credit).
+
 ## Known gaps and limitations
 
 - **Extraction accuracy on real emails hasn't been measured.** The AI runs live (`gpt-5.4-mini`, since 5 October) and spot checks were right, but there's no eval yet.
-- **Card perk catalog is hand-written**: US cards last checked mid-2025, Singapore cards October 2026 (section 31). Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
+- **Card perk catalog is hand-written**: US cards checked 8 October 2026 (section 34), Singapore cards 6 October 2026 (section 31). A perk already saved for the current period keeps its old value or wording until the period resets. Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
 - **Unconfirmed accounts are kept forever.** Email verification is a soft gate (section 28); accounts that never confirm aren't deleted automatically.
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
