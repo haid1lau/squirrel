@@ -1,12 +1,12 @@
 # Squirrel: progress notes
 
-_Last updated: 2 October 2026_
+_Last updated: 8 October 2026_
 
 _Renamed from BenefitApp to Squirrel on 1 October 2026. Internal names keep the old one on purpose: the database `instance/benefitapp.db`, the `BENEFITAPP_SECRET_KEY` setting and the `benefitapp_session` / `benefitapp_oauth_state` cookies. Renaming them would make existing data unreadable or sign everyone out. The project folder is still `BenefitApp/`._
 
 Squirrel tracks memberships, vouchers and card perks so they don't expire unnoticed. Users sign in (email + password, or Google), then:
 
-- **Connect Gmail** (read-only), or **other email over IMAP** (Yahoo, iCloud, AOL, …) with an app password. The app searches for likely benefit emails, and an OpenAI model extracts each benefit; plain code checks the result.
+- **Connect Gmail** or **Outlook** (read-only), or **other email over IMAP** (Gmail, Yahoo, iCloud, AOL, …) with an app password. The app searches for likely benefit emails, and an OpenAI model extracts each benefit; plain code checks the result.
 - **Add credit cards** from a list. Each card's recurring credits are tracked with the date they reset. No card numbers or bank connection.
 - **Get email reminders** before benefits expire, set per benefit from its ⋯ menu (1 week to 1 year before), in the user's own time zone.
 
@@ -576,38 +576,40 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 
 ## Known gaps and limitations
 
-- **AI features never run live** (no OpenAI key yet). The Responses API calls, strict schemas and prompts are untested against the real API, and the prompts were written for Claude.
-- **Google sign-in and Gmail scanning not yet tried end to end in a browser.** The OAuth client and Gmail API access are verified; the flows were tested with Google mocked.
+- **Extraction accuracy on real emails hasn't been measured.** The AI runs live (`gpt-5.4-mini`, since 5 October) and spot checks were right, but there's no eval yet.
 - **Card perk catalog is hand-written**: US cards last checked mid-2025, Singapore cards October 2026 (section 31). Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
 - **Unconfirmed accounts are kept forever.** Email verification is a soft gate (section 28); accounts that never confirm aren't deleted automatically.
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
 - **Scan jobs live in server memory.** Restarting the server mid-scan loses progress (already-processed emails are kept).
-- **No real browser click-through yet.** Checks so far are screenshots plus API tests with `curl`.
+- **No automated browser tests.** The screens are checked by hand in a browser (light, dark, phone width).
 - **Tests cover the server only** (section 33): not the inbox scanners, the AI features or the React screens.
 - **Reminders are email only**, sent by a thread inside `server.py`: none go out while the server is stopped (a missed one is sent at the next check if the benefit hasn't expired). No push or in-app notifications. The email has no one-click unsubscribe; it says to change or stop a reminder from the benefit's ⋯ menu. The background thread's own send hasn't been watched end to end yet; the sample was sent by calling the same code directly.
 - **Time zone comes from the last device used.** Someone travelling gets reminders on that device's clock; there's no manual time-zone picker.
 - **Sending through a personal Gmail account** is limited (about 500 emails a day) and may be flagged as bulk mail. Fine for testers; use a sending service (e.g. Amazon SES, Postmark, Resend) with a custom domain before launch.
 - **Categories of benefits saved before 1 October were guessed** from their names (`_add_benefit_types` in `db.py`). Wrong guesses need fixing by hand with Edit.
-- **Outlook not yet tried with a real Microsoft account** (needs the app registration). IMAP reads only the inbox (Gmail: All Mail), and a server that can't search message text can't be scanned.
+- **Outlook not yet tried with a real Microsoft account** (the app registration is done). IMAP reads only the inbox (Gmail: All Mail), and a server that can't search message text can't be scanned.
 - **Long emails are cut to 8,000 characters** (a known limitation for long forwarded threads).
 - **SQLite, one server process.** Fine for testers; not built for many users or several servers.
-- **Answers appear all at once.** The skill recommends streaming them, which would need the server to stream.
+- **Assistant answers appear all at once** (the blocks then rise in one by one). Streaming them as they're written would need the server to stream.
 - Filters on the All benefits page aren't kept in the URL.
-- **The project isn't a git repository**, so there's no history or undo. **The database isn't backed up either:** the copies made before this session's migrations were in a temporary folder and won't last. `instance/` holds all user data and the encryption key (`secret.key`); losing the key makes saved Gmail tokens and IMAP passwords unreadable.
+- **The database isn't backed up.** The code is on GitHub, but `instance/` (all user data and the encryption key `secret.key`) is deliberately not; losing the key makes saved Gmail and Outlook tokens and IMAP passwords unreadable.
 
 ---
 
 ## Next steps (suggested order)
 
-1. **Check extraction quality on real emails** with `gpt-5.4-mini`: compare scanned benefits and dates with the emails, and watch the review queue. Set a monthly budget limit in the OpenAI dashboard.
-2. **Code is on GitHub** (private): https://github.com/haid1lau/squirrel, default branch `main` (5 October 2026). `.env` and `instance/` are ignored and never committed, so back up `instance/` (database + `secret.key`) separately from time to time.
-3. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
-4. **Verify the card catalog and loyalty programs** against current terms and sending domains, and fix `cards.py` / `loyalty.py`. Add more programs (non-US hotels and airlines) as needed.
-5. **Custom cards and perks.**
-6. **More tests:** the server has tests (section 33). Still to add: the inbox scanners with fake mail servers, and React Testing Library for sign-in, connections and the benefit pages.
-7. **Watch a real daily scan:** turn on Daily scan on your own account, open Squirrel the next day, and check the toast, the new benefits and the OpenAI usage page.
-8. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026); the owner will test once they have an Outlook address.
-9. **Build an extraction eval** from real benefit emails.
-10. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
-11. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs too.
-12. **Before any public launch:** HTTPS hosting, Postgres, Google's restricted-scope verification and security assessment, a privacy policy, a proper email sending service with a custom domain (instead of a Gmail account), a one-click unsubscribe link in reminder emails, and moving the reminder check out of the web server (a scheduled job) so it keeps running across restarts and several servers.
+The code is on GitHub (private): https://github.com/haid1lau/squirrel, default branch `main`. `.env` and `instance/` are never committed.
+
+1. **Set a monthly budget limit** in the OpenAI dashboard (scans, the digest, the assistant and daily scans all cost money).
+2. **Check extraction quality on real emails** with `gpt-5.4-mini`: compare scanned benefits and dates with the emails, and watch the review queue.
+3. **Back up `instance/`** (database + `secret.key`) somewhere safe from time to time.
+4. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
+5. **Watch a real daily scan:** turn on Daily scan on your own account, open Squirrel the next day, and check the toast, the new benefits and the OpenAI usage page.
+6. **Try Connect Outlook with a real Outlook.com account.** The Microsoft app registration is done and its ID and secret are in `.env` (5 October 2026).
+7. **Keep the card catalog and loyalty programs current** (`cards.py`, `loyalty.py`): issuers change perks. Add more programs (non-US hotels and airlines) as needed.
+8. **Custom cards and perks.**
+9. **More tests:** the server has tests (section 33). Still to add: the inbox scanners with fake mail servers, and React Testing Library for sign-in, connections and the benefit pages.
+10. **Build an extraction eval** from real benefit emails.
+11. **Live KrisFlyer balances (optional):** prototype against Singapore Airlines' free sandbox, then apply for a KrisFlyer partnership once the app is hosted (see Owner decisions). Talk to Accor about balance access at the same time.
+12. **When Squirrel is put online, set `APP_URL` in `.env`** to its real address (e.g. `https://squirrel.example.com`). Links in emails (reminders, password resets) and the Google sign-in return address are built from it; it's `http://127.0.0.1:8000` until then, which only works on this computer. Add the new address's `/api/auth/google/callback` to the Google client's authorised redirect URIs, and `/api/auth/microsoft/callback` to the Microsoft app's.
+13. **Before any public launch:** HTTPS hosting, Postgres, Google's restricted-scope verification and security assessment, Microsoft publisher verification, a lawyer's read of the draft privacy policy and terms (section 25), a proper email sending service with a custom domain (instead of a Gmail account), a one-click unsubscribe link in reminder emails, and moving reminders and daily scans out of the web server (scheduled jobs) so they keep running across restarts and several servers.
