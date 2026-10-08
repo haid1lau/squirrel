@@ -154,3 +154,49 @@ def test_failed_email_still_counts_and_is_retried(user, monkeypatch):
     assert read_today(user["id"]) == scan_jobs.MAX_TRIES  # each try was a paid call
     with db.connect() as conn:  # given up on after MAX_TRIES
         assert "a" in scan_jobs.finished_emails(conn, user["id"])
+
+
+# --- Expired and repeated offers ------------------------------------------------
+
+def found(monkeypatch, **fields):
+    """Replaces the AI model: every email reads as this benefit."""
+    from app import ExtractedBenefit, validate
+
+    def fake_extract(text, received_date, today):
+        benefit = ExtractedBenefit(is_benefit=True, benefit_name="S$20 off", provider="iShopChangi",
+                                   type="voucher", category="shopping", expiry_confidence="explicit",
+                                   expiry_reasoning="", source_snippet="", **fields)
+        return validate(benefit, today=today, email_text=text)
+    monkeypatch.setattr(scan_jobs, "extract_benefit_from_email", fake_extract)
+
+
+def stored(user_id: str) -> int:
+    with db.connect() as conn:
+        return conn.execute("SELECT COUNT(*) FROM benefits WHERE user_id = ?", (user_id,)).fetchone()[0]
+
+
+def test_already_expired_offer_is_skipped(user, monkeypatch):
+    found(monkeypatch, expiry_date="2026-10-04")
+    job = new_job()
+    scan_jobs.extract_and_store(user["id"], job, "a", {"text": "until 4/10/26", "received_date": None},
+                                "gmail", "gmail:a", {}, TODAY)
+    assert stored(user["id"]) == 0 and job["skipped"] == 1
+
+
+def test_same_code_in_a_second_email_is_skipped(user, monkeypatch):
+    found(monkeypatch, expiry_date="2026-12-31", code="ISCNEW20")
+    email = {"text": "Use code ISCNEW20 by 31/12/2026", "received_date": None}
+    scan_jobs.extract_and_store(user["id"], new_job(), "a", email, "gmail", "gmail:a", {}, TODAY)
+    job = new_job()
+    scan_jobs.extract_and_store(user["id"], job, "b", {**email, "text": "Reminder: code ISCNEW20 still works"},
+                                "gmail", "gmail:b", {}, TODAY)
+    assert stored(user["id"]) == 1 and job["skipped"] == 1
+
+
+def test_offer_without_a_code_is_kept_twice(user, monkeypatch):
+    # Without a code there's no safe way to tell two offers apart.
+    found(monkeypatch, expiry_date="2026-12-31")
+    for key in ("a", "b"):
+        scan_jobs.extract_and_store(user["id"], new_job(), key, {"text": "S$20 off", "received_date": None},
+                                    "gmail", f"gmail:{key}", {}, TODAY)
+    assert stored(user["id"]) == 2

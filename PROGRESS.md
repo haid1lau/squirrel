@@ -592,9 +592,25 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 - A perk already saved for the current period keeps its old value until it resets (next month for monthly credits,
   the next anniversary for the Sapphire Preferred hotel credit).
 
+### 35. Extraction checked against real emails; date, benefit and duplicate fixes (8 October 2026)
+
+- **Check:** the 22 benefits a Gmail scan found on the owner's account were compared with their emails (read
+  through the Gmail connector). Every value, date and voucher code that was saved matched its email (5 of 5 codes
+  word for word). Problems: 3 missed expiry dates (`Valid Till: 11/10/2026`, `until midnight 4/10/26`,
+  `expiring end of October 2026`), 1 duplicate (the same iShopChangi code in two emails) and 3 non-benefits (a
+  menu price, an ad for a new credit card, a product announcement). 15 of 22 fully right.
+- **Fixed on the account:** the two dates added; the expired offer, the duplicate and the three non-benefits removed
+  (they're in Recently removed).
+- **Scanner:** the extraction prompt now reads numeric dates as day/month (Singapore), "end of <month>" as its last
+  day and a date range as its last day, and says what isn't a benefit (announcements, menu prices, ads for new
+  cards, loans or accounts). `scan_jobs.extract_and_store` skips an offer that has already expired and one whose
+  voucher code is already tracked. The five problem emails, re-run live, all came out right. 3 new tests (114).
+- The owner's Gmail now connects with an app password over IMAP (the Google connection had hit its 7-day expiry);
+  a read-only test signed in and found 710 matching emails.
+
 ## Known gaps and limitations
 
-- **Extraction accuracy on real emails hasn't been measured.** The AI runs live (`gpt-5.4-mini`, since 5 October) and spot checks were right, but there's no eval yet.
+- **Extraction checked once on real emails** (22 benefits, section 35), not with a repeatable eval. Offers without a code that arrive in several emails can still be listed twice.
 - **Card perk catalog is hand-written**: US cards checked 8 October 2026 (section 34), Singapore cards 6 October 2026 (section 31). A perk already saved for the current period keeps its old value or wording until the period resets. Issuers change perks; verify each card before trusting it. Custom cards and user-defined perks aren't supported yet.
 - **Unconfirmed accounts are kept forever.** Email verification is a soft gate (section 28); accounts that never confirm aren't deleted automatically.
 - **AI request limits live in server memory** (`limits.py`), so a restart resets them and several server processes would each count separately.
@@ -619,7 +635,7 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
 The code is on GitHub (private): https://github.com/haid1lau/squirrel, default branch `main`. `.env` and `instance/` are never committed.
 
 1. **Set a monthly budget limit** in the OpenAI dashboard (scans, the digest, the assistant and daily scans all cost money).
-2. **Check extraction quality on real emails** with `gpt-5.4-mini`: compare scanned benefits and dates with the emails, and watch the review queue.
+2. **Keep checking extraction on real emails** (first check done 8 October, section 35: values and codes right, dates and non-benefits fixed). Re-check after the next scan, especially dates in other formats.
 3. **Back up `instance/`** (database + `secret.key`) somewhere safe from time to time.
 4. **Watch a real reminder arrive.** Once your account has benefits, leave reminders on, keep `server.py` running past 8am Singapore time, and check that the email arrives once (and not again at the next 15-minute check). The demo account has reminders off on purpose (example.com isn't a real inbox).
 5. **Watch a real daily scan:** turn on Daily scan on your own account, open Squirrel the next day, and check the toast, the new benefits and the OpenAI usage page.

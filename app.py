@@ -278,8 +278,22 @@ a wrong reminder date is a real failure for the user.
 Copy any voucher or promo code exactly as written. Never make one up: if \
 there's no code in the email, set code to null.
 
-If the email is not actually about a benefit (marketing spam, an unrelated \
-receipt, a newsletter, etc.), set is_benefit to false.
+Reading dates (the user is in Singapore):
+- Numeric dates are day/month/year unless the email is clearly American: \
+"11/10/2026" is 11 October 2026 and "4/10/26" is 4 October 2026. A date \
+written this way is explicit.
+- "End of October 2026" means 31 October 2026 (explicit). A month or day \
+with no year means the next one on or after the email's received date \
+(computed).
+- For a date range ("7 to 9 Oct", "valid 28 Sep - 18 Oct"), the expiry is \
+the last day.
+
+A benefit is something the user holds or can redeem: a voucher or promo code, \
+a credit or rebate, a points balance, a membership or its perks, a free trial, \
+a birthday reward, or a time-limited offer they can claim. Set is_benefit to \
+false for marketing spam, an unrelated receipt or newsletter, a product or \
+feature announcement, a menu or shelf price ("now $6.50"), and ads for opening \
+a new card, loan or account that the user doesn't have yet.
 """
 
 

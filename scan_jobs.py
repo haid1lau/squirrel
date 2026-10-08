@@ -179,6 +179,23 @@ def _record_failure(user_id: str, message_key: str) -> None:
             (user_id, message_key))
 
 
+def _expired(result, today: date) -> bool:
+    """An offer whose stated date has already passed: nothing left to track."""
+    try:
+        return bool(result.expiry_date) and date.fromisoformat(result.expiry_date) < today
+    except ValueError:
+        return False
+
+
+def _have_code(conn: sqlite3.Connection, user_id: str, result) -> bool:
+    """The same voucher code is already tracked (it often arrives in several emails)."""
+    code = (getattr(result, "code", None) or "").strip().upper()
+    return bool(code) and conn.execute(
+        "SELECT 1 FROM benefits WHERE user_id = ? AND status = 'active' "
+        "AND UPPER(TRIM(json_extract(data, '$.code'))) = ?", (user_id, code)
+    ).fetchone() is not None
+
+
 def extract_and_store(user_id: str, job: dict, message_key: str, email: dict,
                       source: str, source_ref: str, extra: dict, today: date) -> bool:
     """
@@ -191,7 +208,8 @@ def extract_and_store(user_id: str, job: dict, message_key: str, email: dict,
     like a missing API key); the job then already holds the message, and the
     email isn't counted as failed. Other failures are counted (see MAX_TRIES).
     A marketing email is marked as read without the AI model; one over the
-    daily cap is left for a later scan.
+    daily cap is left for a later scan. A benefit that has already expired,
+    or whose voucher code is already tracked, is skipped.
     """
     if looks_promotional(email["text"]):
         with db.connect() as conn:
@@ -225,10 +243,11 @@ def extract_and_store(user_id: str, job: dict, message_key: str, email: dict,
         conn.execute("INSERT INTO processed_emails (user_id, message_id, done) VALUES (?, ?, 1) "
                      "ON CONFLICT (user_id, message_id) DO UPDATE SET done = 1",
                      (user_id, message_key))
-        if result.is_benefit:
+        keep = result.is_benefit and not _expired(result, today) and not _have_code(conn, user_id, result)
+        if keep:
             db.add_benefit(conn, user_id, source, source_ref, {**asdict(result), **extra})
 
-    if not result.is_benefit:
+    if not keep:
         bump(job, "skipped", "checked")
     elif result.needs_review:
         bump(job, "needs_review", "checked")
