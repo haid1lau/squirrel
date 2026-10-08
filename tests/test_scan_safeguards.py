@@ -200,3 +200,16 @@ def test_offer_without_a_code_is_kept_twice(user, monkeypatch):
         scan_jobs.extract_and_store(user["id"], new_job(), key, {"text": "S$20 off", "received_date": None},
                                     "gmail", f"gmail:{key}", {}, TODAY)
     assert stored(user["id"]) == 2
+
+
+# --- Gmail read both ways --------------------------------------------------------
+
+def test_gmail_message_ids_match_the_gmail_api():
+    import imap_sync
+
+    class FakeImap:
+        def uid(self, command, uids, items):
+            assert command == "FETCH" and uids == "7,9" and items == "(X-GM-MSGID)"
+            return "OK", [b"1 (X-GM-MSGID 1878177213564307915 UID 7)", b"2 (UID 9 X-GM-MSGID 255)"]
+    assert imap_sync.gmail_message_ids(FakeImap(), ["7", "9"]) == {"7": "1a10a03987bbc9cb", "9": "ff"}
+    assert imap_sync.gmail_message_ids(FakeImap(), []) == {}

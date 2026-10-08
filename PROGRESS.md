@@ -607,6 +607,15 @@ Three limits on what reaches OpenAI, ready for the planned daily automatic scan.
   voucher code is already tracked. The five problem emails, re-run live, all came out right. 3 new tests (114).
 - The owner's Gmail now connects with an app password over IMAP (the Google connection had hit its 7-day expiry);
   a read-only test signed in and found 710 matching emails.
+- **Gmail read both ways:** an IMAP scan of a Gmail inbox now skips emails a Gmail API scan already read
+  (`imap_sync.gmail_message_ids`: Gmail's IMAP `X-GM-MSGID` is the API's message id in decimal). Without it, the
+  first app-password scan re-read them and added duplicates and previously removed entries.
+- **First app-password scan** (50 emails): 9 marketing, 28 not kept, 13 saved; 6 of the 13 right. The 7 wrong were
+  5 already-expired emails listing several dated coupons (the AI called the date "ambiguous") and 2 non-benefits.
+  The prompt now takes the latest of the offers' own "valid until" dates (never event, travel or application
+  dates), gives ongoing membership perks no expiry, and excludes "buy more, get a bonus" offers and bonuses that
+  need a new card. Re-run, 11 of the 13 came out right (KrisFlyer lost its date and goes to review; a PAssion
+  newsletter picked a deal's date). The earlier five problem emails still pass.
 
 ## Known gaps and limitations
 

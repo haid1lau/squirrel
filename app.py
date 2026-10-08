@@ -287,13 +287,23 @@ with no year means the next one on or after the email's received date \
 (computed).
 - For a date range ("7 to 9 Oct", "valid 28 Sep - 18 Oct"), the expiry is \
 the last day.
+- If the email lists several coupons or deals, each with its own "valid \
+until" or offer date, the expiry is the latest of those dates (explicit), \
+even if it has passed. Only use the offers' own dates: never the date of an \
+event, a campaign the benefit isn't part of, a travel period or an \
+application deadline.
+- The ongoing perks of a membership (member discounts, earning rates) have \
+no expiry. A points or miles balance with some points expiring on a date \
+expires on that date.
 
 A benefit is something the user holds or can redeem: a voucher or promo code, \
 a credit or rebate, a points balance, a membership or its perks, a free trial, \
 a birthday reward, or a time-limited offer they can claim. Set is_benefit to \
 false for marketing spam, an unrelated receipt or newsletter, a product or \
-feature announcement, a menu or shelf price ("now $6.50"), and ads for opening \
-a new card, loan or account that the user doesn't have yet.
+feature announcement, a menu or shelf price ("now $6.50"), a bonus for buying \
+more of something ("buy 2,500 coins, get 200 free"), and ads for opening a new \
+card, loan or account that the user doesn't have yet (including bonuses that \
+need one, like "apply by 31 Oct for 20,000 miles").
 """
 
 

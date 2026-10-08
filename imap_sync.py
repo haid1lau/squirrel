@@ -261,6 +261,25 @@ def _search(imap: imaplib.IMAP4_SSL, host: str, today: date) -> list[str]:
     return [u.decode() for u in (data[0] or b"").split()]
 
 
+def gmail_message_ids(imap: imaplib.IMAP4_SSL, uids: list[str]) -> dict[str, str]:
+    """
+    {uid: Gmail API message id} for these Gmail UIDs. X-GM-MSGID is the same
+    number as the Gmail API's id, in decimal rather than hex.
+    """
+    if not uids:
+        return {}
+    typ, data = imap.uid("FETCH", ",".join(uids), "(X-GM-MSGID)")
+    if typ != "OK":
+        return {}
+    ids = {}
+    for line in data or []:
+        text = line.decode(errors="replace") if isinstance(line, bytes) else ""
+        uid, msgid = re.search(r"UID (\d+)", text), re.search(r"X-GM-MSGID (\d+)", text)
+        if uid and msgid:
+            ids[uid.group(1)] = format(int(msgid.group(1)), "x")
+    return ids
+
+
 def _loyalty_finder(imap: imaplib.IMAP4_SSL) -> loyalty.Finder:
     since = _imap_date(loyalty.since())
 
@@ -361,6 +380,8 @@ def _scan(user_id: str, account_id: str, job: dict) -> None:
         row = conn.execute("SELECT email, host, password_enc FROM imap_accounts WHERE id = ? AND user_id = ?",
                            (account_id, user_id)).fetchone()
         done = scan_jobs.finished_emails(conn, user_id, f"imap:{account_id}:")
+        # Emails already read by a Gmail API scan (keyed by Gmail's message id, no prefix).
+        read_by_gmail_api = {m for m in scan_jobs.finished_emails(conn, user_id) if ":" not in m}
         today = reminders.user_today(conn, user_id)
     if row is None:
         raise ImapError("That email account is no longer connected.")
@@ -377,7 +398,10 @@ def _scan(user_id: str, account_id: str, job: dict) -> None:
         def key(uid: str) -> str:
             return f"imap:{account_id}:{uidvalidity}:{uid}"
 
-        batch = scan_jobs.take_batch(user_id, job, uids, lambda u: key(u) not in done, today)
+        # The same Gmail inbox may have been scanned through the Gmail API: skip what that read.
+        api_ids = gmail_message_ids(imap, uids) if gmail and read_by_gmail_api else {}
+        batch = scan_jobs.take_batch(
+            user_id, job, uids, lambda u: key(u) not in done and api_ids.get(u) not in read_by_gmail_api, today)
 
         def tasks():
             for uid in batch:
