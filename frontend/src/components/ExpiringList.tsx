@@ -82,7 +82,7 @@ export function ExpiringList({ benefits, error, onRetry, onUpdated, onRemoved, l
                   }}
                 />
               ) : (
-                <BenefitRow key={b.id} benefit={b} index={i}>
+                <BenefitRow key={b.id} benefit={b} index={i} showTerms={false}>
                   <BenefitActions
                     benefit={b}
                     onEdit={() => setEditing(b.id)}

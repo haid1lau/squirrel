@@ -15,10 +15,12 @@ interface BenefitRowProps {
   benefit: Benefit
   /** Position in the list, for the staggered entrance (capped, so long lists don't wait). */
   index?: number
+  /** The terms summary under the details; off for short lists like "Up next". */
+  showTerms?: boolean
   children?: ReactNode
 }
 
-export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
+export function BenefitRow({ benefit, index = 0, showTerms = true, children }: BenefitRowProps) {
   const days = benefit.days_until_expiry
   const { tone } = urgency(days)
   const meta = [
@@ -77,7 +79,9 @@ export function BenefitRow({ benefit, index = 0, children }: BenefitRowProps) {
           <div className={cn('h-full rounded-full', meterTone[tone])} style={{ width: `${fill}%` }} />
         </div>
       ) : null}
-      {benefit.terms_summary ? <p className="col-span-full text-sm text-ink-muted">{benefit.terms_summary}</p> : null}
+      {showTerms && benefit.terms_summary ? (
+        <p className="col-span-full text-sm text-ink-muted">{benefit.terms_summary}</p>
+      ) : null}
       {benefit.source_link ? (
         <a
           href={benefit.source_link}
