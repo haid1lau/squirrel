@@ -3,7 +3,10 @@
 // sample data in data.json (captured from the real app by
 // capture_demo_data.py) and keeps changes in this browser only.
 //
-// - Any email and password signs in; Google and Microsoft sign-in "connect" at once.
+// - Any email and password signs in. Each email has its own account: the
+//   ones in data.json (clayton@, priya@, marcus@ and sam@demo.com) have their
+//   own sample data, and any other email starts from Clayton's. Google and
+//   Microsoft sign-in "connect" at once.
 // - Scans pretend to read emails for a few seconds, then add sample benefits.
 // - Assistant answers and the weekly digest are written from the benefits by
 //   simple rules, not by an AI model.
@@ -41,9 +44,8 @@ interface Job {
   finished: boolean
 }
 
-interface State {
-  version: number
-  signedIn: boolean
+/** One demo account's data. */
+interface Account {
   user: User
   benefits: Stored[]
   cards: UserCard[]
@@ -57,7 +59,14 @@ interface State {
   jobs: Record<string, Job>
 }
 
-const VERSION = 2 // bump when data.json changes, so browsers drop the old saved copy
+interface Store {
+  version: number
+  /** The signed-in account's key (its email in lower case), or null when signed out. */
+  current: string | null
+  accounts: Record<string, Account>
+}
+
+const VERSION = 3 // bump when data.json changes, so browsers drop the old saved copy
 const STORAGE_KEY = 'squirrel-demo'
 const EMAIL_EVERY_MS = 220 // how fast a pretend scan "reads" emails
 const REMOVED_KEEP_DAYS = 30
@@ -97,28 +106,31 @@ const newId = () =>
   Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('')
 
 // ---------------------------------------------------------------------------
-// State, kept in localStorage so a refresh doesn't lose the visitor's changes.
+// Accounts, kept in localStorage so a refresh doesn't lose the visitor's changes.
+// Each email has its own: the ones in data.json start from their own sample
+// data, and any other email starts from the first one's.
 // ---------------------------------------------------------------------------
+
+type Captured = (typeof captured.accounts)[number]
 
 function strip(b: Benefit): Stored {
   const { days_until_expiry: _d, credit_total: _c, ...rest } = b
   return rest
 }
 
-function initialState(): State {
-  const data = shift(captured)
-  const cardId = data.cards.cards[0]?.id
+function fromCaptured(source: Captured, email: string): Account {
+  const data = shift(source)
+  const cards = data.cards as UserCard[]
   return {
-    version: VERSION,
-    signedIn: false,
-    user: { ...data.user, email_verified: true } as User,
-    benefits: (data.benefits as Benefit[]).map((b) => ({
-      ...strip(b),
-      ...(b.source === 'card' && cardId ? { card_id: cardId } : {}),
-    })),
-    cards: data.cards.cards as UserCard[],
+    user: { ...(data.user as User), email, email_verified: true },
+    benefits: (data.benefits as Benefit[]).map((b) => {
+      // A card's perks are listed under the card's name.
+      const cardId = b.source === 'card' ? cards.find((c) => c.name === b.provider)?.id : undefined
+      return { ...strip(b), ...(cardId ? { card_id: cardId } : {}) }
+    }),
+    cards,
     ask: data.ask_history as AskEntry[],
-    gmail: data.gmail as GmailConnection,
+    gmail: (data.gmail as GmailConnection | null) ?? null,
     outlook: null,
     imap: [],
     autoScan: false,
@@ -127,34 +139,42 @@ function initialState(): State {
   }
 }
 
-function load(): State {
+const emptyStore = (): Store => ({ version: VERSION, current: null, accounts: {} })
+/** Stands in for the signed-in account while no one is signed in. */
+const placeholder = () => fromCaptured(captured.accounts[0], '')
+
+function load(): Store {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as State | null
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Store | null
     if (saved?.version === VERSION) return saved
   } catch {
     // Private window or blocked storage: start fresh.
   }
-  return initialState()
+  return emptyStore()
 }
 
-let state = load()
+let store = load()
+/** The signed-in account. */
+let state: Account = (store.current && store.accounts[store.current]) || placeholder()
+const signedIn = () => store.current !== null && store.accounts[store.current] === state
 
 function save() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
   } catch {
     // Changes just won't survive a refresh.
   }
 }
 
-/** Puts the demo back to its sample data and signs out. */
+/** Puts every demo account back to its sample data and signs out. */
 export function resetDemo() {
   try {
     localStorage.removeItem(STORAGE_KEY)
   } catch {
     // Nothing saved.
   }
-  state = initialState()
+  store = emptyStore()
+  state = placeholder()
 }
 
 // ---------------------------------------------------------------------------
@@ -491,11 +511,20 @@ function digest(): Digest {
 const ok = { ok: true } as const
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+const validEmail = (email: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)
+
+/** Signs in to this email's account, making it the first time from its sample data (or the first account's). */
 function signIn(email: string, name?: string): { user: User } {
   const address = email.trim()
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address)) throw new Error('Enter a valid email address.')
-  state.signedIn = true
-  state.user = { ...state.user, email: address, ...(name?.trim() ? { name: name.trim() } : {}) }
+  if (!validEmail(address)) throw new Error('Enter a valid email address.')
+  const key = address.toLowerCase()
+  if (!store.accounts[key]) {
+    const source = captured.accounts.find((a) => a.email === key) ?? captured.accounts[0]
+    store.accounts[key] = fromCaptured(source, address)
+  }
+  state = store.accounts[key]
+  if (name?.trim()) state.user.name = name.trim()
+  store.current = key
   save()
   return { user: state.user }
 }
@@ -504,24 +533,24 @@ function signIn(email: string, name?: string): { user: User } {
 export const SIGNED_OUT = 'Sign in first.'
 
 function signedInUser(): User {
-  if (!state.signedIn) throw new Error(SIGNED_OUT)
+  if (!signedIn()) throw new Error(SIGNED_OUT)
   return state.user
 }
 
 const cardsResponse = (): CardsResponse => ({
   cards: state.cards,
-  catalog: captured.cards.catalog as CardsResponse['catalog'],
+  catalog: captured.catalog as CardsResponse['catalog'],
 })
 
 function route(method: string, path: string, body: Record<string, unknown>): unknown {
   // Signed out
   if (path === '/api/session')
     return {
-      user: state.signedIn ? state.user : null,
+      user: signedIn() ? state.user : null,
       google_enabled: true,
       microsoft_enabled: true,
-      gmail: state.signedIn ? state.gmail : null,
-      auto_scan: state.signedIn ? autoScanStatus() : null,
+      gmail: signedIn() ? state.gmail : null,
+      auto_scan: signedIn() ? autoScanStatus() : null,
     }
   if (path === '/api/auth/register') {
     if (String(body.password ?? '').length < 8) throw new Error('Use a password of at least 8 characters.')
@@ -532,20 +561,36 @@ function route(method: string, path: string, body: Record<string, unknown>): unk
     return signIn(String(body.email ?? ''))
   }
   if (path === '/api/auth/forgot') return { ok: true, email_enabled: false }
-  if (path === '/api/auth/reset' || path === '/api/auth/verify-email') return signIn(state.user.email)
+  if (path === '/api/auth/reset' || path === '/api/auth/verify-email')
+    return signedIn() ? { user: state.user } : signIn(captured.accounts[0].email)
 
   const user = signedInUser()
   if (path === '/api/auth/logout') {
-    state.signedIn = false
+    store.current = null
     save()
     return ok
   }
   if (path === '/api/account/delete') {
-    resetDemo()
+    // Signing in with this email again starts it from its sample data.
+    delete store.accounts[store.current!]
+    store.current = null
+    state = placeholder()
+    save()
     return ok
   }
   if (path === '/api/account/verification') return { ok: true, email_enabled: false }
-  if (path === '/api/account/email') return signIn(String(body.email ?? ''), user.name ?? undefined)
+  if (path === '/api/account/email') {
+    const email = String(body.email ?? '').trim()
+    if (!validEmail(email)) throw new Error('Enter a valid email address.')
+    const key = email.toLowerCase()
+    if (key !== store.current && store.accounts[key]) throw new Error('Another account already uses that email.')
+    delete store.accounts[store.current!]
+    store.accounts[key] = state
+    store.current = key
+    user.email = email
+    save()
+    return { user }
+  }
   if (path === '/api/timezone') return ok
 
   // Benefits
@@ -688,7 +733,7 @@ function route(method: string, path: string, body: Record<string, unknown>): unk
     return state.imap.map((a) => ({ ...a, scan: jobStatus(`imap:${a.id}`) }))
   if (path === '/api/imap' && method === 'POST') {
     const email = String(body.email ?? '').trim()
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Enter a valid email address.')
+    if (!validEmail(email)) throw new Error('Enter a valid email address.')
     if (!String(body.password ?? '').trim()) throw new Error('Enter the app password.')
     if (state.imap.some((a) => a.email.toLowerCase() === email.toLowerCase()))
       throw new Error('That account is already connected.')
@@ -722,7 +767,7 @@ function route(method: string, path: string, body: Record<string, unknown>): unk
   if (path === '/api/cards' && method === 'GET') return cardsResponse()
   if (path === '/api/cards' && method === 'POST') {
     const key = String(body.card_key ?? '')
-    const card = captured.cards.catalog.cards.find((c) => c.key === key)
+    const card = captured.catalog.cards.find((c) => c.key === key)
     if (!card) throw new Error('Pick a card from the list.')
     if (state.cards.some((c) => c.card_key === key)) throw new Error('You’ve already added that card.')
     const added: UserCard = {
@@ -766,6 +811,15 @@ export async function demoRequest<T>(path: string, init: RequestInit = {}): Prom
 // straight back with ?demo=..., handled on page load.
 // ---------------------------------------------------------------------------
 
+/** A made-up address for the signed-in person, like sam.demo@gmail.com. */
+const demoAddress = (domain: string) =>
+  `${
+    (state.user.name ?? '')
+      .split(' ')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '') || 'me'
+  }.demo@${domain}`
+
 function takeDemoRedirect() {
   const params = new URLSearchParams(window.location.search)
   const action = params.get('demo')
@@ -775,11 +829,11 @@ function takeDemoRedirect() {
   if (action === 'google-login') {
     signIn('clayton.demo@gmail.com', 'Clayton Lau')
     notice = 'signed_in'
-  } else if (action === 'gmail-connect' && state.signedIn) {
-    state.gmail = { email: 'clayton.demo@gmail.com', connected_at: nowIso(), last_sync_at: null }
+  } else if (action === 'gmail-connect' && signedIn()) {
+    state.gmail = { email: demoAddress('gmail.com'), connected_at: nowIso(), last_sync_at: null }
     notice = 'gmail_connected'
-  } else if (action === 'outlook-connect' && state.signedIn) {
-    state.outlook = { email: 'clayton.demo@outlook.com', connected_at: nowIso(), last_sync_at: null }
+  } else if (action === 'outlook-connect' && signedIn()) {
+    state.outlook = { email: demoAddress('outlook.com'), connected_at: nowIso(), last_sync_at: null }
     notice = 'outlook_connected'
   }
   save()
