@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- ?v= makes browsers fetch the icon again after it changes (they keep tab icons a long time). -->
+    <link rel="icon" href="/favicon.ico?v=2" sizes="48x48" />
+    <link rel="icon" type="image/png" href="/favicon-32.png?v=2" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/favicon.png?v=2" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Track memberships, vouchers and perks before they expire." />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0B1324" media="(prefers-color-scheme: dark)" />
+    <title>Squirrel</title>
+    <script>
+      // Apply a theme picked with the header toggle before the first paint (see src/lib/theme.ts).
+      try {
+        const t = localStorage.getItem('squirrel-theme')
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.dataset.theme = t
+          const bg = t === 'dark' ? '#0B1324' : '#FFFFFF'
+          document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', bg))
+        }
+      } catch {}
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

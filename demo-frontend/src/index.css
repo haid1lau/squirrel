@@ -1,0 +1,432 @@
+@import "tailwindcss";
+
+/*
+ * Design system: the Squirrel design from Claude Design (design/Squirrel.html).
+ * Frosted-glass panels over a soft background glow, orange CTA, Plus Jakarta Sans.
+ * The CTA is #C2410C so white button text meets the 4.5:1 contrast minimum.
+ */
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-bg: #FFFFFF;
+  --color-surface: rgb(255 255 255 / 0.72);
+  /* Menus, toasts and dropdowns float over text, so they stay nearly solid. */
+  --color-popover: rgb(255 255 255 / 0.94);
+  --color-surface-2: rgb(241 245 249 / 0.85);
+  --color-line: rgb(15 23 42 / 0.1);
+  --color-ink: #0F172A;
+  --color-ink-muted: #475569;
+
+  --color-primary: #3B82F6;
+  --color-primary-soft: rgb(59 130 246 / 0.12);
+  --color-primary-text: #1D4ED8;
+  --color-cta: #C2410C;
+  --color-cta-hover: #9A3412;
+
+  --color-danger: #B91C1C;
+  --color-danger-soft: rgb(239 68 68 / 0.1);
+  --color-warn: #B45309;
+  --color-warn-soft: rgb(245 158 11 / 0.14);
+  --color-ok: #166534;
+  --color-ok-soft: rgb(34 197 94 / 0.12);
+
+  --color-focus: #2563EB;
+
+  /* Glass panels: the top-edge highlight and the soft drop shadow. */
+  --color-hl: rgb(255 255 255 / 0.9);
+  --color-shadow: rgb(15 23 42 / 0.2);
+  --color-header: rgb(255 255 255 / 0.6);
+
+  /* The background glow: amber, rust, moss and sky. */
+  --color-glow-amber: rgb(245 158 11 / 0.28);
+  --color-glow-rust: rgb(194 65 12 / 0.18);
+  --color-glow-moss: rgb(101 163 13 / 0.2);
+  --color-glow-sky: rgb(96 165 250 / 0.22);
+
+  --animate-rise: rise 250ms cubic-bezier(.2,.8,.2,1) both;
+  --animate-shimmer: shimmer 1.2s linear infinite;
+  /* From the Claude Design file: a check popping in, and the "All caught up" squirrel. */
+  --animate-pop: pop 200ms cubic-bezier(.2,.8,.2,1) both;
+  --animate-dig: dig 2.4s ease-in-out infinite;
+  --animate-bury: bury 2.4s ease-in-out infinite;
+  --animate-typing: typing 1.2s ease-in-out infinite;
+  --animate-spoiler: spoiler 2.4s linear infinite;
+
+  /* The glow drifts slowly; alternate, so it never jumps back. */
+  @keyframes drift {
+    from { transform: none; }
+    50% { transform: translate(4%, -3%) rotate(6deg) scale(1.05); }
+    to { transform: translate(-3%, 4%) rotate(-4deg) scale(1); }
+  }
+  /* A firefly glows, drifts a little and fades. */
+  @keyframes firefly {
+    0%, 100% { opacity: 0; transform: none; }
+    40% { opacity: 1; }
+    50% { transform: translate(10px, -14px); }
+    70% { opacity: 0.8; }
+  }
+  /* A background firefly wanders off by (--dx, --dy) and back, glowing and fading. */
+  @keyframes wander {
+    0%, 100% { opacity: 0; transform: none; }
+    30% { opacity: 1; }
+    50% { transform: translate(var(--dx), var(--dy)); }
+    70% { opacity: 0.7; }
+  }
+  /* Waterfall streaks: one dash pattern (18 + 14) twice, so the loop is seamless. */
+  @keyframes fall {
+    to { stroke-dashoffset: -64; }
+  }
+  @keyframes ripple {
+    from { transform: scale(.3); opacity: 1; }
+    to { transform: scale(1.15); opacity: 0; }
+  }
+  @keyframes mist {
+    0%, 100% { transform: scale(.8); opacity: .3; }
+    50% { transform: translateY(-8px) scale(1.15); opacity: .9; }
+  }
+  /* Fog in the gorge drifts sideways and thins out. */
+  @keyframes fog {
+    from { transform: translateX(-10px); opacity: 1; }
+    to { transform: translateX(12px); opacity: .55; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes shimmer {
+    to { background-position: -200% 0; }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(.4); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes dig {
+    0%, 100% { transform: none; }
+    60% { transform: rotate(-5deg) translateY(4px); }
+    75% { transform: rotate(3deg); }
+  }
+  @keyframes typing {
+    0%, 60%, 100% { transform: none; opacity: .35; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+  /* Each dot layer drifts one tile, so the loop is seamless. */
+  @keyframes spoiler {
+    to { background-position: 9px -9px, -7px -7px, 5px 5px; }
+  }
+  @keyframes bury {
+    0% { transform: translateY(-34px); opacity: 0; }
+    15% { transform: none; opacity: 1; }
+    55% { transform: none; }
+    82% { transform: translateY(26px); opacity: 1; }
+    100% { transform: translateY(26px); opacity: 0; }
+  }
+}
+
+/* The woodland along the bottom (components/Woodland.tsx): one solid colour
+   per layer, paler with distance, so a nearer tree hides what's behind it. */
+:root {
+  --wood-mtn: #CDD5E5;
+  --wood-snow: #F8FAFD;
+  --wood-far: #E6DFD5;
+  --wood-back: #DED3C3;
+  --wood-rock: #C6BCB1;
+  --wood-rock-shade: #ACA296;
+  --wood-pine: #ADB89B;
+  --wood-fog: #FFFFFF;   --wood-fog-o: 0.85;
+  --wood-mid: #D2D7BE;
+  --wood-near: #D6C8BA;
+  --wood-leaf: #E0A082;
+  --wood-firefly: none;
+  --water: #0EA5E9;      --water-o: 0.3;
+  --water-streak: #FFFFFF; --water-streak-o: 0.9;
+  /* The signed-out landing page (components/landing/). */
+  --land-bg: #FBF8F4;
+  --land-header: rgb(251 248 244 / 0.82);
+  --land-hill-far: #F1DEC6;
+  --land-hill-near: #E7C49C;
+  --land-blob-1: oklch(0.9 0.07 60 / 0.85);
+  --land-blob-2: oklch(0.91 0.05 255 / 0.8);
+  --land-blob-3: oklch(0.92 0.045 140 / 0.7);
+  --land-line: #E4DFD7;
+  --land-outline: #D9D3CA;
+  --land-tile-l: 0.93; --land-tile-c: 0.05; --land-tile-ink-l: 0.45;
+}
+
+/* Dark tokens: follow the system setting unless the user picked a theme
+   with the header toggle (data-theme on <html>, see lib/theme.ts). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #0B1324;
+    --color-surface: rgb(22 32 52 / 0.72);
+    --color-popover: rgb(22 32 52 / 0.95);
+    --color-surface-2: rgb(51 65 85 / 0.55);
+    --color-line: rgb(148 163 184 / 0.18);
+    --color-ink: #F8FAFC;
+    --color-ink-muted: #B4C0D2;
+    --color-primary: #60A5FA;
+    --color-primary-soft: rgb(59 130 246 / 0.18);
+    --color-primary-text: #93C5FD;
+    --color-danger: #FCA5A5;
+    --color-danger-soft: rgb(220 38 38 / 0.16);
+    --color-warn: #FCD34D;
+    --color-warn-soft: rgb(217 119 6 / 0.16);
+    --color-ok: #86EFAC;
+    --color-ok-soft: rgb(22 163 74 / 0.16);
+    --color-focus: #93C5FD;
+    --color-hl: rgb(255 255 255 / 0.07);
+    --color-shadow: rgb(0 0 0 / 0.6);
+    --color-header: rgb(11 19 36 / 0.62);
+    --color-glow-amber: rgb(217 119 6 / 0.22);
+    --color-glow-rust: rgb(194 65 12 / 0.26);
+    --color-glow-moss: rgb(77 124 15 / 0.22);
+    --color-glow-sky: rgb(59 130 246 / 0.26);
+    --wood-mtn: #2B3D6A;
+    --wood-snow: #56688F;
+    --wood-far: #22325A;
+    --wood-back: #182543;
+    --wood-rock: #1E2C4C;
+    --wood-rock-shade: #131C33;
+    --wood-pine: #0C1529;
+    --wood-fog: #9DB2D9;   --wood-fog-o: 0.22;
+    --wood-mid: #0E182D;
+    --wood-near: #060B17;
+    --wood-leaf: #4F231F;
+    --wood-firefly: block;
+    --water: #60A5FA;      --water-o: 0.32;
+    --water-streak: #DBEAFE; --water-streak-o: 0.6;
+    --land-bg: #0B1324;
+    --land-header: rgb(11 19 36 / 0.82);
+    --land-hill-far: #1A2540;
+    --land-hill-near: #25304C;
+    --land-blob-1: oklch(0.45 0.1 60 / 0.45);
+    --land-blob-2: oklch(0.45 0.1 255 / 0.5);
+    --land-blob-3: oklch(0.45 0.08 140 / 0.35);
+    --land-line: #2A3650;
+    --land-outline: #3A4864;
+    --land-tile-l: 0.32; --land-tile-c: 0.06; --land-tile-ink-l: 0.86;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #0B1324;
+  --color-surface: rgb(22 32 52 / 0.72);
+  --color-popover: rgb(22 32 52 / 0.95);
+  --color-surface-2: rgb(51 65 85 / 0.55);
+  --color-line: rgb(148 163 184 / 0.18);
+  --color-ink: #F8FAFC;
+  --color-ink-muted: #B4C0D2;
+  --color-primary: #60A5FA;
+  --color-primary-soft: rgb(59 130 246 / 0.18);
+  --color-primary-text: #93C5FD;
+  --color-danger: #FCA5A5;
+  --color-danger-soft: rgb(220 38 38 / 0.16);
+  --color-warn: #FCD34D;
+  --color-warn-soft: rgb(217 119 6 / 0.16);
+  --color-ok: #86EFAC;
+  --color-ok-soft: rgb(22 163 74 / 0.16);
+  --color-focus: #93C5FD;
+  --color-hl: rgb(255 255 255 / 0.07);
+  --color-shadow: rgb(0 0 0 / 0.6);
+  --color-header: rgb(11 19 36 / 0.62);
+  --color-glow-amber: rgb(217 119 6 / 0.22);
+  --color-glow-rust: rgb(194 65 12 / 0.26);
+  --color-glow-moss: rgb(77 124 15 / 0.22);
+  --color-glow-sky: rgb(59 130 246 / 0.26);
+  --wood-mtn: #2B3D6A;
+  --wood-snow: #56688F;
+  --wood-far: #22325A;
+  --wood-back: #182543;
+  --wood-rock: #1E2C4C;
+  --wood-rock-shade: #131C33;
+  --wood-pine: #0C1529;
+  --wood-fog: #9DB2D9;   --wood-fog-o: 0.22;
+  --wood-mid: #0E182D;
+  --wood-near: #060B17;
+  --wood-leaf: #4F231F;
+  --wood-firefly: block;
+  --water: #60A5FA;      --water-o: 0.32;
+  --water-streak: #DBEAFE; --water-streak-o: 0.6;
+  --land-bg: #0B1324;
+  --land-header: rgb(11 19 36 / 0.82);
+  --land-hill-far: #1A2540;
+  --land-hill-near: #25304C;
+  --land-blob-1: oklch(0.45 0.1 60 / 0.45);
+  --land-blob-2: oklch(0.45 0.1 255 / 0.5);
+  --land-blob-3: oklch(0.45 0.08 140 / 0.35);
+  --land-line: #2A3650;
+  --land-outline: #3A4864;
+  --land-tile-l: 0.32; --land-tile-c: 0.06; --land-tile-ink-l: 0.86;
+  color-scheme: dark;
+}
+
+/* A frosted panel: translucent surface, blurred backdrop, highlight and shadow. */
+@utility glass {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--color-hl), 0 24px 60px -28px var(--color-shadow);
+}
+
+/* The same glass, nearly solid, for menus, toasts and dropdowns. */
+@utility glass-float {
+  background-color: var(--color-popover);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: inset 0 1px 0 var(--color-hl), 0 18px 40px -16px var(--color-shadow);
+}
+
+@layer components {
+  .wood-mtn { fill: var(--wood-mtn); }
+  .wood-snow { fill: var(--wood-snow); }
+  .wood-far { fill: var(--wood-far); }
+  .wood-back { fill: var(--wood-back); }
+  .wood-rock { fill: var(--wood-rock); }
+  .wood-rock-shade { fill: var(--wood-rock-shade); }
+  .wood-cracks { fill: none; stroke: var(--wood-rock-shade); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .wood-pine { fill: var(--wood-pine); }
+  .wood-fog { fill: var(--wood-fog); opacity: var(--wood-fog-o); }
+  .wood-fog ellipse { animation: fog 14s ease-in-out infinite alternate; }
+  .wood-mid { fill: var(--wood-mid); }
+  .wood-near { fill: var(--wood-near); }
+  .wood-leaf { fill: var(--wood-leaf); }
+  .wood-water { fill: var(--water); opacity: var(--water-o); }
+  .wood-streaks {
+    fill: none;
+    stroke: var(--water-streak);
+    opacity: var(--water-streak-o);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  .wood-streaks line { stroke-dasharray: 18 14; animation: fall .8s linear infinite; }
+  .wood-ripples { fill: none; stroke: var(--water-streak); opacity: var(--water-streak-o); stroke-width: 2; }
+  .wood-ripples ellipse,
+  .wood-mist circle {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  .wood-ripples ellipse { opacity: 0; animation: ripple 2.4s ease-out infinite; }
+  .wood-mist circle { animation: mist 2.1s ease-in-out infinite; }
+  .page-fireflies { display: var(--wood-firefly); }
+  .page-fireflies span {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FEF3C7;
+    box-shadow: 0 0 8px 3px #FDE68A, 0 0 22px 7px rgb(251 191 36 / 0.6);
+    opacity: 0;
+    animation: wander 10s ease-in-out infinite;
+  }
+  .wood-fireflies { display: var(--wood-firefly); fill: #FEF3C7; }
+  .wood-fireflies circle {
+    opacity: 0;
+    filter: drop-shadow(0 0 4px #FDE68A) drop-shadow(0 0 10px #FBBF24);
+    transform-box: fill-box;
+    animation: firefly 6s ease-in-out infinite;
+  }
+
+  /* Landing page: things fade and slide in as they scroll into view.
+     useLandingMotion sets data-shown; --d is the delay. */
+  [data-reveal] {
+    opacity: 0;
+    transition: opacity .8s cubic-bezier(.2,.7,.2,1) var(--d, 0ms), transform .8s cubic-bezier(.2,.7,.2,1) var(--d, 0ms);
+  }
+  [data-reveal="up"] { transform: translateY(14px); }
+  [data-reveal="card"] { transform: translateY(24px) scale(.97); }
+  [data-reveal="word"] { transform: translateY(.5em); transition-duration: .9s; }
+  [data-reveal="letter"] { transform: translateY(.4em) rotate(6deg); transition-duration: .9s; }
+  [data-reveal="drop"] { transform: translateY(-40px) scale(.8); }
+  [data-reveal="pop"] { transform: scale(.4); }
+  [data-reveal][data-shown] { opacity: 1; transform: none; }
+}
+
+/* A ticket: a round notch cut into each side at --notch-y, where the tear line is. */
+@utility ticket {
+  --notch-l: radial-gradient(circle 10px at 0 var(--notch-y, 50%), #0000 97%, #000);
+  --notch-r: radial-gradient(circle 10px at 100% var(--notch-y, 50%), #0000 97%, #000);
+  -webkit-mask: var(--notch-l) left / 51% 100% no-repeat, var(--notch-r) right / 51% 100% no-repeat;
+  mask: var(--notch-l) left / 51% 100% no-repeat, var(--notch-r) right / 51% 100% no-repeat;
+}
+
+/* Hidden text under a field of drifting dots, like Telegram's spoilers. */
+@utility spoiler {
+  color: transparent;
+  background-image:
+    radial-gradient(circle, var(--color-ink-muted) 0.9px, transparent 1.4px),
+    radial-gradient(circle, var(--color-ink) 0.6px, transparent 1.1px),
+    radial-gradient(circle, var(--color-ink-muted) 0.5px, transparent 1px);
+  background-size: 9px 9px, 7px 7px, 5px 5px;
+  background-position: 0 0, 3px 2px, 1px 4px;
+  animation: var(--animate-spoiler);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply min-h-dvh bg-bg font-sans text-base leading-relaxed text-ink;
+  }
+  /* Behind the glass: soft patches of autumn colour that drift over about a
+     minute, with a faint paper grain on top so the background reads as a material. */
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    z-index: -1;
+    pointer-events: none;
+  }
+  body::before {
+    inset: -25%;
+    background-image:
+      radial-gradient(30% 30% at 33% 34%, var(--color-glow-amber), transparent 70%),
+      radial-gradient(28% 32% at 68% 32%, var(--color-glow-sky), transparent 70%),
+      radial-gradient(32% 28% at 64% 66%, var(--color-glow-rust), transparent 70%),
+      radial-gradient(26% 26% at 34% 68%, var(--color-glow-moss), transparent 70%);
+    animation: drift 60s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  body::after {
+    inset: 0;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  section[id] {
+    scroll-margin-top: 5rem;
+  }
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+  ::placeholder {
+    color: var(--color-ink-muted);
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  body::before { animation: none; }
+  .wood-fireflies circle,
+  .page-fireflies span { animation: none; opacity: 0.85; }
+  .wood-streaks line, .wood-mist circle, .wood-fog ellipse { animation: none; }
+  .wood-ripples ellipse { animation: none; opacity: 0.5; }
+  [data-reveal] { opacity: 1; transform: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
