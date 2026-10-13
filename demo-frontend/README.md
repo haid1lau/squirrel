@@ -17,10 +17,11 @@ from sample data, and keeps changes in the visitor's browser only:
   Gmail" and "Connect Outlook" connect straight away.
 - Scans pretend to read emails for a few seconds, then add sample benefits.
 - Assistant answers and the weekly digest come from simple rules, not AI.
-- **Reset** (bottom left) puts every account back to its sample data.
+- To start over, clear the site's data in the browser (or run
+  `localStorage.clear()` in its console).
 
 The only other changes from `../frontend` are `src/lib/api.ts` (requests go to
-`src/demo/server.ts`), the banner in `src/main.tsx`, and `vercel.json`.
+`src/demo/server.ts`) and `vercel.json`.
 
 ## Run it
 
