@@ -57,7 +57,7 @@ interface State {
   jobs: Record<string, Job>
 }
 
-const VERSION = 1
+const VERSION = 2 // bump when data.json changes, so browsers drop the old saved copy
 const STORAGE_KEY = 'squirrel-demo'
 const EMAIL_EVERY_MS = 220 // how fast a pretend scan "reads" emails
 const REMOVED_KEEP_DAYS = 30
@@ -773,13 +773,13 @@ function takeDemoRedirect() {
   params.delete('demo')
   let notice: string | null = null
   if (action === 'google-login') {
-    signIn('alex.demo@gmail.com', 'Alex Demo')
+    signIn('clayton.demo@gmail.com', 'Clayton Lau')
     notice = 'signed_in'
   } else if (action === 'gmail-connect' && state.signedIn) {
-    state.gmail = { email: 'alex.demo@gmail.com', connected_at: nowIso(), last_sync_at: null }
+    state.gmail = { email: 'clayton.demo@gmail.com', connected_at: nowIso(), last_sync_at: null }
     notice = 'gmail_connected'
   } else if (action === 'outlook-connect' && state.signedIn) {
-    state.outlook = { email: 'alex.demo@outlook.com', connected_at: nowIso(), last_sync_at: null }
+    state.outlook = { email: 'clayton.demo@outlook.com', connected_at: nowIso(), last_sync_at: null }
     notice = 'outlook_connected'
   }
   save()

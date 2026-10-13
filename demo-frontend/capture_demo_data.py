@@ -79,7 +79,9 @@ def main() -> None:
     httpd.shutdown()
     out = HERE / "src" / "demo" / "data.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(data, indent=1) + "\n")
+    # The demo's sample person is Clayton, not demo_seed.py's Alex.
+    text = json.dumps(data, indent=1).replace("Alex Demo", "Clayton Lau").replace("alex.demo", "clayton.demo")
+    out.write_text(text.replace("Alex", "Clayton") + "\n")
     print(f"Wrote {out.relative_to(HERE.parent)}: {len(benefits)} benefits, {len(card_benefits)} cards.")
 
 
