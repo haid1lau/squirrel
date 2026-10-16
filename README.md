@@ -4,6 +4,10 @@ Squirrel keeps track of the memberships, vouchers, subscriptions and credit-card
 
 It reads your inbox (read-only) for benefit emails, uses an AI model to pull out each benefit and its expiry date, checks the result with plain code, and sends you an email reminder before anything runs out. Anything the AI isn't sure about goes to a review queue for you to confirm, so it isn't trusted blindly.
 
+<p align="center">
+  <img src="docs/images/landing.png" alt="Squirrel's homepage: 'Never let a voucher expire unnoticed.'" width="80%">
+</p>
+
 ---
 
 ## 1. Problem statement
@@ -33,7 +37,55 @@ From that list, Squirrel:
 
 Uncertain items (no clear expiry date, a date in the past, a date implausibly far away) go to a **review queue** instead of straight into your list.
 
+### How it works
+
+```mermaid
+flowchart LR
+    subgraph sources["Where benefits come from"]
+        G["Gmail"]
+        O["Outlook"]
+        I["Other email (IMAP)"]
+        C["Credit cards you pick"]
+        M["Added by hand"]
+    end
+
+    G & O & I --> F["Search for benefit emails<br/>and skip marketing"]
+    F --> AI["AI reads each email<br/>and extracts the benefit"]
+    AI --> V{"Plain-code checks:<br/>is the date certain<br/>and sensible?"}
+    V -- yes --> T[("Your benefits")]
+    V -- no --> R["Review queue<br/>(you confirm or fix)"]
+    R --> T
+    C --> T
+    M --> T
+
+    T --> D["Dashboard:<br/>what expires soonest"]
+    T --> E["Email reminders<br/>before expiry"]
+    T --> W["AI weekly digest"]
+    T --> A["AI assistant"]
+
+    classDef ai fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef check fill:#fef3c7,stroke:#d97706,color:#78350f
+    class AI,W,A ai
+    class V,R check
+```
+
+<sub>Blue steps use the AI model; amber steps are plain code and you.</sub>
+
 ## 3. Key features
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/dashboard.png" alt="Dashboard: benefits expiring in the next 30 days, the number tracked and to review, and an Up next list of vouchers with days left"><br/><sub><b>Dashboard.</b> What expires soonest, with one tap to mark a voucher used or copy its code.</sub></td>
+    <td width="50%"><img src="docs/images/all-benefits.png" alt="All Benefits page: search, filters by type, and benefit cards showing value and expiry, with one opened on the right"><br/><sub><b>All benefits.</b> Search and filter everything you hold; open one for its terms, reminder and source.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/review-queue.png" alt="Review queue showing a 2-for-1 movie ticket flagged 'Expiry is ambiguous' with the source phrase quoted and buttons to pick a date"><br/><sub><b>Review queue.</b> The AI wasn't sure of this date, so it shows the email's own words and asks you.</sub></td>
+    <td width="50%"><img src="docs/images/connections.png" alt="Connections page with Gmail connected, Outlook and other email accounts, the daily scan switch and a credit card wallet"><br/><sub><b>Connections.</b> Connect inboxes read-only, turn on the daily scan, and add credit cards.</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots are from the server-free demo (<code>demo-frontend/</code>) with made-up sample data.</sub>
+
 
 - **Inbox scanning** for Gmail (Google sign-in), Outlook / Hotmail / Microsoft 365 (Microsoft sign-in) and other email over IMAP with an app password. All read-only.
 - **AI benefit extraction** into a fixed structure, with a confidence level for every expiry date.
@@ -49,6 +101,11 @@ Uncertain items (no clear expiry date, a date in the past, a date implausibly fa
 - **Accounts**: email and password or Google sign-in, email verification, password reset, and full account deletion.
 - Light and dark mode, and a layout that works on phones.
 
+<p align="center">
+  <img src="docs/images/mobile-dark.png" alt="Squirrel's dashboard on a phone in dark mode" width="260"><br/>
+  <sub>The dashboard on a phone, in dark mode.</sub>
+</p>
+
 A **server-free demo** in [`demo-frontend/`](demo-frontend/README.md) runs the whole interface in the browser with sample data (no AI calls, no backend), for showing the app off on Vercel.
 
 ## 4. AI integration
@@ -61,11 +118,66 @@ Squirrel uses an OpenAI model (through the Responses API, default `gpt-5.5`; we 
 | **Weekly digest** | [`BenefitIntelligence.py`](BenefitIntelligence.py) | Ranks the user's benefits 1–5 by urgency (how soon vs. how valuable) and writes a 2–3 sentence summary. | Works out days until expiry, refers to benefits by ID and drops any ID the model invented or repeated, uses the real benefit names, and caches the result until something changes. |
 | **Assistant (Q&A)** | [`BenefitIntelligence.py`](BenefitIntelligence.py) | Answers the user's question in a short, phone-friendly reply. | Sends only the user's own benefit records (all of them, up to 300; past that, the ones that best match the question's words) as the source of truth. |
 
+### What happens to each email
+
+```mermaid
+flowchart TD
+    A["Email found by inbox search"] --> B{"Already read,<br/>from Squirrel itself,<br/>or obvious marketing?"}
+    B -- yes --> X["Skipped (no AI call)"]
+    B -- no --> C{"Under today's cap of<br/>100 AI-read emails?"}
+    C -- no --> Y["Waits for a later scan"]
+    C -- yes --> D["AI model returns a structured record<br/>(name, value, date, confidence, code, source phrase)"]
+    D --> E{"Is it a benefit?"}
+    E -- no --> X2["Not kept"]
+    E -- yes --> F["Plain-code checks"]
+    F --> F1["Code must appear word for word in the email"]
+    F --> F2["Confidence 'ambiguous' or 'unknown' → date removed"]
+    F --> F3["Date missing, malformed, past, or 5+ years away"]
+    F --> F4["Duplicate code or already-expired offer → not kept"]
+    F4 --> X2
+    F1 & F2 & F3 --> G{"Anything flagged?"}
+    G -- no --> H[("Tracked benefit<br/>+ reminder")]
+    G -- yes --> R["Review queue, with the reason"]
+
+    classDef ai fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef check fill:#fef3c7,stroke:#d97706,color:#78350f
+    class D ai
+    class F,F1,F2,F3,F4,G,R check
+```
+
+<table>
+  <tr>
+    <td width="62%"><img src="docs/images/assistant.png" alt="Assistant conversation: questions about travel perks and what expires this week, each answered in a short paragraph with matching benefits listed below and an AI-generated label"><br/><sub><b>Assistant.</b> Answers come only from your own benefits, with the ones it mentions listed underneath.</sub></td>
+    <td width="38%"><img src="docs/images/digest.png" alt="Weekly digest: a two-sentence summary and benefits ranked by urgency with dots from one to five"><br/><sub><b>Weekly digest.</b> Benefits ranked by urgency, with a short summary.</sub></td>
+  </tr>
+</table>
+
+<sub>In the demo shown here, these answers come from simple rules that stand in for the AI; in the real app they come from the OpenAI model, labelled "AI-generated".</sub>
+
 **How the AI is called.** Extraction and the digest use **strict structured outputs**: the API forces the reply to match a JSON schema, so there is no free-text parsing. All three features share one client (`call_structured` / `call_text` in `app.py`) that handles retries with backoff, refusals, cut-off output and clear error messages. Requests are sent with `store: false`, so OpenAI doesn't keep the response for later retrieval.
 
 **Prompt design.** The extraction prompt's central rule is to *never guess a date*: a missed reminder is a small inconvenience, but a wrong reminder date is a real failure. It also covers reading Singapore day/month dates, "end of October", date ranges, emails listing several coupons, and what doesn't count as a benefit (ads for new credit cards, menu prices, newsletters, "buy more, get a bonus" offers). Today's date and the email's received date are given so relative wording ("valid for 6 months") can be worked out.
 
 ## 5. External tools and datasets
+
+### How the pieces connect
+
+```mermaid
+flowchart LR
+    U["Browser<br/>React app"] <-- "JSON API<br/>/api/*" --> S["server.py<br/>Python standard-library server"]
+    S <--> DB[("SQLite<br/>tokens and passwords encrypted")]
+    S -- "email text<br/>(store: false)" --> OAI["OpenAI<br/>Responses API"]
+    S -- "read-only" --> GM["Gmail API"]
+    S -- "read-only" --> MS["Microsoft Graph<br/>(Outlook)"]
+    S -- "read-only, TLS" --> IM["IMAP servers"]
+    S -- "reminders,<br/>verification, resets" --> SM["SMTP"]
+    S -- "sign-in" --> OA["Google / Microsoft<br/>OAuth"]
+
+    classDef ext fill:#f1f5f9,stroke:#64748b,color:#0f172a
+    classDef ai fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    class GM,MS,IM,SM,OA ext
+    class OAI ai
+```
 
 **APIs and models**
 - **OpenAI Responses API** (`gpt-5.5` by default, `OPENAI_MODEL` to change it): extraction, digest and assistant.
