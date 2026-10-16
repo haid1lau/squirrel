@@ -19,7 +19,7 @@ It reads your inbox (read-only) for benefit emails, uses an AI model to pull out
 - Holders of premium credit cards (e.g. Amex Platinum, Chase Sapphire Reserve), whose value depends on using monthly, quarterly and yearly credits that reset on different schedules and don't carry over.
 - Frequent travellers with hotel and airline memberships whose points expire after a period of inactivity.
 
-**Why is it worth solving?** The money is real and already paid for: a premium card's annual fee is justified only if its credits get used, and unused vouchers and points are simply lost. Existing tools either cover one kind of benefit (a points tracker, a card app) or need the user to type everything in by hand, which most people won't keep doing. The information is already in the user's inbox; it just needs reading and organising.
+**Why is it worth solving?** The money is real and already paid for: a premium card's annual fee is justified only if its credits get used, and unused vouchers and points are simply lost. The information is already in the user's inbox; it just needs reading and organising.
 
 ## 2. Solution overview
 
@@ -32,10 +32,10 @@ Squirrel is a web app (React frontend, Python backend) that builds one list of e
 From that list, Squirrel:
 - shows what expires soonest on a dashboard,
 - emails you a reminder before each benefit expires (1 week by default, adjustable per benefit),
-- writes an AI weekly digest ranking what needs attention,
+- on request, writes an AI weekly digest ranking what needs attention,
 - answers questions about your benefits ("what can I use for dinner this week?") with an assistant that only uses your own records.
 
-Uncertain items (no clear expiry date, a date in the past, a date implausibly far away) go to a **review queue** instead of straight into your list.
+Uncertain items (no clear expiry date, or a date implausibly far away) go to a **review queue** instead of straight into your list. Offers that have already expired aren't kept.
 
 ### How it works
 
@@ -60,7 +60,7 @@ flowchart LR
 
     T --> D["Dashboard:<br/>what expires soonest"]
     T --> E["Email reminders<br/>before expiry"]
-    T --> W["AI weekly digest"]
+    T --> W["AI weekly digest<br/>(on request)"]
     T --> A["AI assistant"]
 
     classDef ai fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
@@ -93,10 +93,10 @@ flowchart LR
 - **Credit-card perk tracking** for 25 cards, with reset dates worked out for monthly, quarterly, half-yearly, calendar-year and card-anniversary credits, and partial use ("$7 of $15 spent this month").
 - **Loyalty-membership detection** (no AI) for 13 hotel and airline programs, from who emails you and when, with an estimated points expiry.
 - **Email reminders** per benefit (1 week to 1 year before, or off), in your own time zone.
-- **Weekly digest**: an AI ranking of your benefits by urgency and value, with a short summary.
+- **Weekly digest**: press Generate on the Assistant page for an AI ranking of your benefits by urgency and value, with a short summary. It's made only when you ask (nothing is sent automatically).
 - **Assistant**: ask questions in plain English, answered only from your own benefits.
 - **Optional daily scan** of all connected inboxes (off by default).
-- **Voucher codes** hidden until tapped, and a camera scanner to add a code from a QR code or barcode.
+- **Voucher codes** hidden until tapped, and a camera scanner that reads a QR code or barcode and shows which saved benefit it belongs to (or starts a new benefit with the code filled in).
 - **Recently removed** list with undo; removed items are deleted for good after 30 days.
 - **Accounts**: email and password or Google sign-in, email verification, password reset, and full account deletion.
 - Light and dark mode, and a layout that works on phones.
@@ -110,11 +110,11 @@ A **server-free demo** in [`demo-frontend/`](demo-frontend/README.md) runs the w
 
 ## 4. AI integration
 
-Squirrel uses an OpenAI model (through the Responses API, default `gpt-5.5`; we run `gpt-5.4-mini` to cut cost) in three places. Everything else, including dates, reminders, card perks and loyalty detection, is plain code.
+Squirrel uses OpenAI's **`gpt-5.4-mini`** model through the Responses API in three places. (The code falls back to `gpt-5.5` if no model is set; we chose `gpt-5.4-mini` because it costs about 7× less.) Everything else, including dates, reminders, card perks and loyalty detection, is plain code.
 
 | Feature | Where | What the AI does | What plain code does |
 |---|---|---|---|
-| **Benefit extraction** | [`app.py`](app.py), called by [`scan_jobs.py`](scan_jobs.py) | Reads one email and returns a structured record: is it a benefit, name, provider, type, category, value, expiry date, **expiry confidence** (`explicit`, `computed`, `ambiguous`, `unknown`), its reasoning, the exact source phrase, terms and voucher code. | Chooses which emails to send (search keywords, marketing filter, daily cap), validates every field, decides what goes to the review queue, and removes duplicates and already-expired offers. |
+| **Benefit extraction** | [`app.py`](app.py), called by [`scan_jobs.py`](scan_jobs.py) | Reads one email and returns a structured record: is it a benefit, name, provider, type, category, value, expiry date, **expiry confidence** (`explicit`, `computed`, `ambiguous`, `unknown`), its reasoning, the exact source phrase, terms and voucher code. | Chooses which emails to send (search keywords, marketing filter, daily cap), validates every field, decides what goes to the review queue, and skips repeated voucher codes and offers that have already expired. |
 | **Weekly digest** | [`BenefitIntelligence.py`](BenefitIntelligence.py) | Ranks the user's benefits 1–5 by urgency (how soon vs. how valuable) and writes a 2–3 sentence summary. | Works out days until expiry, refers to benefits by ID and drops any ID the model invented or repeated, uses the real benefit names, and caches the result until something changes. |
 | **Assistant (Q&A)** | [`BenefitIntelligence.py`](BenefitIntelligence.py) | Answers the user's question in a short, phone-friendly reply. | Sends only the user's own benefit records (all of them, up to 300; past that, the ones that best match the question's words) as the source of truth. |
 
@@ -132,7 +132,7 @@ flowchart TD
     E -- yes --> F["Plain-code checks"]
     F --> F1["Code must appear word for word in the email"]
     F --> F2["Confidence 'ambiguous' or 'unknown' → date removed"]
-    F --> F3["Date missing, malformed, past, or 5+ years away"]
+    F --> F3["Date missing, malformed, or 5+ years away"]
     F --> F4["Duplicate code or already-expired offer → not kept"]
     F4 --> X2
     F1 & F2 & F3 --> G{"Anything flagged?"}
@@ -148,7 +148,7 @@ flowchart TD
 <table>
   <tr>
     <td width="62%"><img src="docs/images/assistant.png" alt="Assistant conversation: questions about travel perks and what expires this week, each answered in a short paragraph with matching benefits listed below and an AI-generated label"><br/><sub><b>Assistant.</b> Answers come only from your own benefits, with the ones it mentions listed underneath.</sub></td>
-    <td width="38%"><img src="docs/images/digest.png" alt="Weekly digest: a two-sentence summary and benefits ranked by urgency with dots from one to five"><br/><sub><b>Weekly digest.</b> Benefits ranked by urgency, with a short summary.</sub></td>
+    <td width="38%"><img src="docs/images/digest.png" alt="Weekly digest: a two-sentence summary and benefits ranked by urgency with dots from one to five"><br/><sub><b>Weekly digest.</b> Made when you press Generate: benefits ranked by urgency, with a short summary.</sub></td>
   </tr>
 </table>
 
@@ -180,7 +180,7 @@ flowchart LR
 ```
 
 **APIs and models**
-- **OpenAI Responses API** (`gpt-5.5` by default, `OPENAI_MODEL` to change it): extraction, digest and assistant.
+- **OpenAI Responses API** with `gpt-5.4-mini` (set by `OPENAI_MODEL`; `gpt-5.5` if it's left unset): extraction, digest and assistant.
 - **Gmail API** and **Google OAuth 2.0 / OpenID Connect** (PKCE): Google sign-in and read-only Gmail (`gmail.readonly`).
 - **Microsoft Graph** and the **Microsoft identity platform** (PKCE): read-only Outlook mail (`Mail.Read`).
 - **IMAP** (TLS, port 993): any other mail provider, with an app password.
@@ -200,7 +200,7 @@ All HTTP calls use Python's standard library (`urllib`); no vendor SDKs are need
 - `zxing-wasm` and `barcode-detector` (scanning QR codes and barcodes with the camera).
 
 **Data**
-- **Credit-card perk catalog** ([`cards.py`](cards.py)): hand-written for 5 US and 20 Singapore cards, checked against the issuers' own web pages in October 2026. The Singapore cards were chosen from popularity rankings on comparison sites (SingSaver, MoneySmart).
+- **Credit-card perk catalog** ([`cards.py`](cards.py)): hand-written for 5 US and 20 Singapore cards, checked against the issuers' own web pages in October 2026 (a few Singapore figures, such as the UOB Lady's cap and fee and the Maybank fee, came from comparison sites). The Singapore cards were chosen from popularity rankings on comparison sites (SingSaver, MoneySmart).
 - **Loyalty-program list** ([`loyalty.py`](loyalty.py)): 13 hotel and airline programs, their sending domains and their points-expiry rules.
 - No external training datasets; the model is used as-is, with no fine-tuning.
 
@@ -211,7 +211,7 @@ All HTTP calls use Python's standard library (`urllib`); no vendor SDKs are need
 
 ### Prerequisites
 - Python 3.10 or newer
-- Node.js 20 or newer, with npm
+- Node.js 20.19+ or 22.12+ (required by Vite), with npm
 - An OpenAI API key (for scanning, the digest and the assistant)
 - Optional: a Google Cloud OAuth client (Google sign-in and Gmail), a Microsoft app registration (Outlook), SMTP details (emails)
 
@@ -289,17 +289,17 @@ Sign in with any password as `clayton@demo.com`, `priya@demo.com`, `marcus@demo.
 ### Guardrails
 - **Structured outputs, not free text.** The model can only answer in the schema's shape, including an explicit confidence level for the date.
 - **"Never guess a date" rule**, backed by code: a date marked `ambiguous` or `unknown` is removed, and the benefit goes to the review queue with a reason.
-- **Plain-code validation** ([`validate`](app.py) in `app.py`): flags missing or malformed dates, dates in the past and dates more than 5 years away. The model can't mark its own output as reviewed, and can't set points, reminders or usage.
+- **Plain-code validation** ([`validate`](app.py) in `app.py`): flags missing or malformed dates and dates more than 5 years away. During a scan, an offer whose date has already passed isn't kept at all. The model can't mark its own output as reviewed, and can't set points, reminders or usage.
 - **Voucher codes must appear word for word in the email**, or they're dropped. A wrong code at the till is worse than none.
 - **Digest and assistant are grounded.** They see only the user's own records; IDs the model invents are dropped; dates waiting for review are withheld from the digest and the assistant is told not to state them as fact; days until expiry are worked out in code, not by the model.
-- **The user stays in control.** Every benefit can be edited or removed, removals can be undone for 30 days, and the AI's source phrase and reasoning are shown for review items.
+- **The user stays in control.** Every benefit can be edited or removed, removals can be undone for 30 days, and each review item shows why it was flagged and the email's own words for the date.
 - **Limited model influence.** Model output only fills in benefit records; it never triggers actions, sends emails or changes settings, which limits what prompt injection in an email could do. Emails are cut to 8,000 characters.
 - **Privacy.** Inbox access is read-only. OAuth tokens and IMAP passwords are encrypted at rest (Fernet). OpenAI requests use `store: false`. Squirrel's own reminder emails are excluded from scans. Loyalty detection reads only sender, subject and date, with no AI. Users can disconnect an inbox or delete their account and all its data.
 - **Cost limits.** At most 100 emails per user per day go to the AI, a non-AI filter skips obvious marketing emails, an email the AI fails on 3 times is skipped, and each user gets at most 30 questions, 10 digests and 10 scans an hour. The digest is cached until the benefits change. The daily scan is off by default.
 - **Account security.** Scrypt password hashes, throttled wrong passwords, same-origin checks on requests, security headers and a Content-Security-Policy, protection against account pre-hijacking via Google sign-in, and email verification before any reminder is sent to an address.
 
 ### Testing
-- **115 automated server tests** (`python3 -m pytest`, about 10 seconds), covering the validation of AI output, the scan safeguards (marketing filter, daily cap, retries), the daily scan, card reset dates (including leap years and anniversaries), recently removed and restore, accounts and sign-in, reminders and time zones, and the API end to end, including that one user can never see or change another's benefits. Each test gets its own empty database, and any test that tries to reach OpenAI, Google, Microsoft or an email server fails.
+- **115 automated server tests** (`python3 -m pytest`, about 10 seconds), covering the validation of AI output, the scan safeguards (marketing filter, daily cap, retries), the daily scan, card reset dates (including leap years and anniversaries), recently removed and restore, accounts and sign-in, reminders and time zones, and the API end to end, including that one user can never see or change another's benefits. Each test gets its own empty database, and any test that tries to make a web request (OpenAI, Google, Microsoft) or send email over SMTP fails.
 - **Checked against real emails.** The 22 benefits found by a real Gmail scan were compared with their emails: every saved value and voucher code matched (5 of 5 codes word for word), but 3 dates were missed, 1 benefit was a duplicate and 3 weren't benefits (15 of 22 fully right). The prompt and code were fixed (day/month dates, "end of month", date ranges, what isn't a benefit, skipping duplicates and expired offers) and the problem emails re-run correctly. A second scan of 50 emails led to further prompt fixes, after which 11 of 13 saved benefits were right; the 2 that weren't went to review or picked the wrong deal date.
 - **Manual browser checks** of each screen in light mode, dark mode and at phone width.
 
