@@ -279,7 +279,7 @@ Run `npm run dev` in `frontend/` for live reload at http://localhost:5173; it fo
 ```bash
 cd demo-frontend && npm ci && npm run dev
 ```
-Sign in with any password as `clayton@demo.com`, `priya@demo.com`, `marcus@demo.com` or `sam@demo.com`. See [`demo-frontend/README.md`](demo-frontend/README.md) for deploying it on Vercel.
+Sign in with any password as `alex@demo.com`, `priya@demo.com`, `marcus@demo.com` or `sam@demo.com`. See [`demo-frontend/README.md`](demo-frontend/README.md) for deploying it on Vercel.
 
 ## 7. AI safety and limitations
 

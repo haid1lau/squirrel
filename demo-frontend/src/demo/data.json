@@ -2,16 +2,16 @@
   "captured_on": "2026-10-13",
   "accounts": [
     {
-      "email": "clayton@demo.com",
+      "email": "alex@demo.com",
       "user": {
         "id": "e90ab4fd0b89",
         "email": "demo@example.com",
-        "name": "Clayton Lau",
+        "name": "Alex Demo",
         "has_password": true,
         "email_verified": false
       },
       "gmail": {
-        "email": "clayton.demo@gmail.com",
+        "email": "alex.demo@gmail.com",
         "connected_at": "2026-09-29T05:47:45+00:00",
         "last_sync_at": "2026-10-13T02:47:45+00:00"
       },
@@ -33,7 +33,7 @@
           "source_snippet": "Redeem by 2026-10-16.",
           "needs_review": false,
           "review_reason": null,
-          "source_label": "Happy birthday, Clayton! A treat on us",
+          "source_label": "Happy birthday, Alex! A treat on us",
           "days_until_expiry": 3,
           "credit_total": null
         },

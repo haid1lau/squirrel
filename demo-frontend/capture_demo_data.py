@@ -41,7 +41,7 @@ import server  # noqa: E402
 B = demo_seed._benefit
 _in = demo_seed._in
 
-# The other demo accounts, beside demo_seed.py's (shown as Clayton). Made up, like demo_seed.py.
+# The other demo accounts, beside demo_seed.py's Alex. Made up, like demo_seed.py.
 PERSONAS = [
     {
         "email": "priya@demo.com", "name": "Priya Nair", "gmail": "priya.demo@gmail.com",
@@ -169,7 +169,7 @@ def main() -> None:
                 "ask_history": call("/api/ask/history")}
 
     # The first account is also the one any other email signs in to.
-    accounts = [account(demo_seed.EMAIL, "clayton@demo.com")] + [account(p["email"], p["email"]) for p in PERSONAS]
+    accounts = [account(demo_seed.EMAIL, "alex@demo.com")] + [account(p["email"], p["email"]) for p in PERSONAS]
 
     # The benefits each catalog card adds, so "Add a card" works in the demo.
     call = signed_in("catalog@example.com")
@@ -187,9 +187,7 @@ def main() -> None:
             "card_benefits": card_benefits}
     out = HERE / "src" / "demo" / "data.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    # The demo's sample person is Clayton, not demo_seed.py's Alex.
-    text = json.dumps(data, indent=1).replace("Alex Demo", "Clayton Lau").replace("alex.demo", "clayton.demo")
-    out.write_text(text.replace("Alex", "Clayton") + "\n")
+    out.write_text(json.dumps(data, indent=1) + "\n")
     for a in accounts:
         print(f"  {a['email']}: {a['user']['name']}, {len(a['benefits'])} benefits, {len(a['cards'])} cards")
     print(f"Wrote {out.relative_to(HERE.parent)}, with the perks of {len(card_benefits)} cards.")

@@ -4,8 +4,8 @@
 // capture_demo_data.py) and keeps changes in this browser only.
 //
 // - Any email and password signs in. Each email has its own account: the
-//   ones in data.json (clayton@, priya@, marcus@ and sam@demo.com) have their
-//   own sample data, and any other email starts from Clayton's. Google and
+//   ones in data.json (alex@, priya@, marcus@ and sam@demo.com) have their
+//   own sample data, and any other email starts from Alex's. Google and
 //   Microsoft sign-in "connect" at once.
 // - Scans pretend to read emails for a few seconds, then add sample benefits.
 // - Assistant answers and the weekly digest are written from the benefits by
@@ -66,7 +66,7 @@ interface Store {
   accounts: Record<string, Account>
 }
 
-const VERSION = 3 // bump when data.json changes, so browsers drop the old saved copy
+const VERSION = 4 // bump when data.json changes, so browsers drop the old saved copy
 const STORAGE_KEY = 'squirrel-demo'
 const EMAIL_EVERY_MS = 220 // how fast a pretend scan "reads" emails
 const REMOVED_KEEP_DAYS = 30
@@ -827,7 +827,7 @@ function takeDemoRedirect() {
   params.delete('demo')
   let notice: string | null = null
   if (action === 'google-login') {
-    signIn('clayton.demo@gmail.com', 'Clayton Lau')
+    signIn('alex.demo@gmail.com', 'Alex Demo')
     notice = 'signed_in'
   } else if (action === 'gmail-connect' && signedIn()) {
     state.gmail = { email: demoAddress('gmail.com'), connected_at: nowIso(), last_sync_at: null }

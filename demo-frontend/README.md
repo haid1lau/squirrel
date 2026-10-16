@@ -8,12 +8,12 @@ from sample data, and keeps changes in the visitor's browser only:
 
   | Email | Who | Shows |
   |---|---|---|
-  | clayton@demo.com | Clayton Lau | The full sample: Gmail, an Amex Platinum, memberships, items to review |
+  | alex@demo.com | Alex Demo | The full sample: Gmail, an Amex Platinum, memberships, items to review |
   | priya@demo.com | Priya Nair | Singapore: dining and entertainment vouchers, a gym trial, KrisFlyer, a DBS card |
   | marcus@demo.com | Marcus Tan | A frequent traveller: Chase Sapphire Reserve and Amex Gold credits, hotel and airline memberships |
   | sam@demo.com | Sam Lee | A new account with nothing connected, to show the first scan and adding a card |
 
-  Any other email starts from Clayton's data. "Continue with Google", "Connect
+  Any other email starts from Alex's data. "Continue with Google", "Connect
   Gmail" and "Connect Outlook" connect straight away.
 - Scans pretend to read emails for a few seconds, then add sample benefits.
 - Assistant answers and the weekly digest come from simple rules, not AI.
@@ -37,7 +37,7 @@ page to `index.html`. No environment variables are needed.
 ## Refresh the sample data
 
 `src/demo/data.json` is captured from the real app: each account's benefits,
-the card catalog and the perks each card adds. Clayton's account comes from
+the card catalog and the perks each card adds. Alex's account comes from
 `../demo_seed.py`; the others are `PERSONAS` in `capture_demo_data.py`.
 After changing any of them, run this from the project folder:
 
