@@ -8,6 +8,11 @@ It reads your inbox (read-only) for benefit emails, uses an AI model to pull out
   <img src="docs/images/landing.png" alt="Squirrel's homepage: 'Never let a voucher expire unnoticed.'" width="80%">
 </p>
 
+
+
+https://github.com/user-attachments/assets/fa45027a-7f15-4bcd-a858-b5037b62026f
+
+
 ---
 
 ## 1. Problem statement
