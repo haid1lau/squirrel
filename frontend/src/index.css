@@ -84,11 +84,6 @@
     0%, 100% { transform: scale(.8); opacity: .3; }
     50% { transform: translateY(-8px) scale(1.15); opacity: .9; }
   }
-  /* The landing page's "scroll" hint: a dot bobbing in a mouse outline. */
-  --animate-scroll-hint: scroll-hint 1.6s ease-in-out infinite alternate;
-  @keyframes scroll-hint {
-    to { transform: translateY(10px); }
-  }
   /* Fog in the gorge drifts sideways and thins out. */
   @keyframes fog {
     from { transform: translateX(-10px); opacity: 1; }

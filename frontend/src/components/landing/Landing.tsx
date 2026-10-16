@@ -411,15 +411,6 @@ function Hero() {
         >
           Connect your Gmail and cards, and never let a voucher, membership or card credit expire unnoticed.
         </p>
-        <div data-reveal="up" style={delay(1400)} className="mt-8 flex items-center gap-2.5 text-[13px] text-ink-muted">
-          <span
-            aria-hidden
-            className="flex h-[34px] w-[22px] justify-center rounded-xl border-[1.5px] border-ink-muted/50 pt-1.5"
-          >
-            <span className="h-[7px] w-[3px] animate-scroll-hint rounded-sm bg-ink-muted" />
-          </span>
-          Scroll to see how it works
-        </div>
       </div>
     </section>
   )
