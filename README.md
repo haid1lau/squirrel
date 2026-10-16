@@ -8,10 +8,13 @@ It reads your inbox (read-only) for benefit emails, uses an AI model to pull out
   <img src="docs/images/landing.png" alt="Squirrel's homepage: 'Never let a voucher expire unnoticed.'" width="80%">
 </p>
 
+<p align="center">
+  <b><a href="https://squirrel-jet.vercel.app">Try the live demo</a></b>: no install needed. Sign in as <code>alex@demo.com</code> with any password.
+</p>
 
+### Watch the 45-second demo
 
 https://github.com/user-attachments/assets/fa45027a-7f15-4bcd-a858-b5037b62026f
-
 
 ---
 
